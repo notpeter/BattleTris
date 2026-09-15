@@ -157,8 +157,9 @@ pieces of the boundary; broad gameplay parity remains a completion gate.
 
 ### Phase 4: Browser multiplayer
 
-The post-offline implementation sequence is now in
-[MULTIPLAYER.md](MULTIPLAYER.md). No multiplayer implementation is included.
+Private two-human browser matches are implemented through an authoritative
+Node.js/WASM room service. Setup, protocol details and remaining milestones are
+in [MULTIPLAYER.md](MULTIPLAYER.md).
 
 Browsers cannot directly use the original arbitrary TCP socket connections.
 Emscripten offers WebSocket APIs and proxy approaches; its full POSIX-socket
@@ -698,3 +699,11 @@ is to make `BTSoundManager` a no-op:
 When adding platform conditionals, prefer probing for features in
 `configure.in` over hardcoding `#ifdef __linux__` / `#ifdef __APPLE__` where
 possible.
+
+## Private multiplayer implemented
+
+The portable engine now supports two human players with symmetric controls,
+weapons, scoring, reconnaissance and shared bazaar readiness. `server/index.cjs`
+runs isolated WASM rooms and serves `web/online.html`; the existing offline entry
+remains available. See [MULTIPLAYER.md](MULTIPLAYER.md) for setup, protocol,
+lifecycle policies, replay verification and the remaining public-service work.

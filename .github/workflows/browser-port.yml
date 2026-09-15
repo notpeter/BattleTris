@@ -39,6 +39,11 @@ jobs:
           source .emsdk/emsdk_env.sh
           make -C web test test-wasm check-dist archive
           python3 web/audio/check.py
+      - name: Multiplayer dependencies and checks
+        run: |
+          npm ci --ignore-scripts --prefix server
+          npm test --prefix server
+          node web/tests/online.cjs
       - name: Browser checks against development and packaged assets
         run: |
           python3 -m http.server 8000 --bind 127.0.0.1 --directory web > "$RUNNER_TEMP/battletris-http.log" 2>&1 &

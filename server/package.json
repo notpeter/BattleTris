@@ -1,0 +1,9 @@
+{
+  "name": "battletris-private-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Authoritative private-room BattleTris server",
+  "engines": { "node": ">=24" },
+  "scripts": { "start": "node index.cjs", "test": "node tests/integration.cjs" },
+  "dependencies": { "ws": "8.21.3" }
+}

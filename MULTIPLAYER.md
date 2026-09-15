@@ -1,197 +1,169 @@
-# Multiplayer implementation plan
+# Browser multiplayer
 
-Written after the offline release preparation and local validation completed.
-This is a plan only. No multiplayer service, transport, account system, or
-ranking storage has been added.
+Private, unranked two-human matches are implemented. A Node.js server runs the
+same portable C++ rules in an isolated WebAssembly instance for each room. The
+browser sends controls and draws private server snapshots. Solo and Ernie still
+run locally through `index.html` without a multiplayer service.
 
-## Recommended first release
+## Run a private server
 
-Start with private, unranked, two-human browser matches using one authoritative
-server over secure WebSockets. Keep the current solo/Ernie game independent and
-available without that service. Add public matchmaking, persistent identities,
-rankings, spectators, and native interoperability as separate later milestones.
+Use Node.js 24 or newer, Python 3, a C++ compiler, and Emscripten 4.0.15.
+From the repository root, with Emscripten active:
 
-Use the same portable C++ rules on the server. A Node.js transport with one
-Emscripten module instance per match is the initial implementation candidate:
-the existing module already runs in Node and passes native/WASM replay checks.
-Measure memory and throughput before committing to that runtime. A native C++
-worker behind the transport remains an alternative if the measurements warrant
-it. Never share the current module's static `BrowserMatch` between rooms.
+```sh
+make -C web all
+npm ci --ignore-scripts --prefix server
+npm start --prefix server
+```
 
-This recommendation follows the code's existing separation of rules and UI.
-WebSocket has broad browser support, but its API does not provide automatic
-backpressure; bounded queues are part of the design. See
-[MDN WebSocket API](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API).
+Open `http://127.0.0.1:8080/`, create a room, and share the invitation. The second
+player opens that link. Both select Ready to play. For a local test, use two
+browser profiles or a normal and private window. The offline page is available
+at `http://127.0.0.1:8080/index.html`.
 
-## What the native network actually does
+The default listener is loopback. To play across a LAN, substitute the server's
+actual LAN address in this example, then open that address on both devices:
 
-- `usr/src/game/BTNetManager.C` opens a listening socket, registers its address
-  with the daemon, fetches roster/player data, and opens separate peer
-  connections for challenges. Accept/start messages then hand the peer socket
-  to the game communication manager.
-- `usr/src/game/BTCommManager.C` exchanges scores, weapons, boards, arsenals,
-  pause, bazaar, and game-over messages. Received weapons are queued and flushed
-  at a piece boundary. Local Ernie uses sibling communication managers instead
-  of the remote socket path.
-- `usr/src/sockets/PacketBuffer.C` frames messages with type and byte count.
-  Individual payloads have their own encodings. `sendBoard` allocates using
-  `sizeof(unsigned long)` while applying network-long helpers, so cross-width
-  behavior must be audited rather than assumed safe.
-- `usr/src/game/BTProtocol.H` mixes local game events, challenge messages,
-  daemon coordination, and database requests. Its enum is a source reference,
-  not the proposed public protocol.
+```sh
+HOST=0.0.0.0 PORT=8080 ORIGINS=http://192.168.1.10:8080 npm start --prefix server
+```
 
-A single WebSocket-to-TCP tunnel does not solve both daemon discovery and the
-client's incoming peer socket. Emscripten documents socket proxies, including a
-full POSIX proxy with additional constraints and overhead. Keep that as a
-separate preservation experiment if native/browser interoperability becomes a
-requirement. See [Emscripten networking](https://emscripten.org/docs/porting/networking.html).
+For internet use, put the service behind an HTTPS reverse proxy, forward `/ws`
+with WebSocket upgrade support, and set `ORIGINS` to the exact HTTPS origin
+(for example `https://battletris.example`). Multiple allowed origins use commas,
+with no spaces or trailing slashes. Keep Node bound to loopback behind the
+proxy. Invitation links use the address opened in the browser; a localhost link
+will not work on another computer. TLS terminates at the proxy, not in Node.
 
-## 1. Extract a two-human match controller
+The server serves `web/build`, with online play at `/` and `/online.html`.
+The static archive includes `online.html` and a hashed online script, but a
+static host alone cannot run multiplayer. To use that archive with a separate
+static frontend, proxy its same-origin `/ws` to the Node service and allow the
+frontend's origin. No service has been deployed as part of this implementation.
 
-Refactor `web/Match.C/H` so controller type and player side are explicit. Replace
-the hard-coded computer opponent with two human sessions, each using player
-gravity and scoring. Keep the Ernie controller as an optional existing adapter.
-Expose side-specific input, purchase, refund, ready-for-bazaar-exit, surrender,
-and authorized pause operations. Networking must not call mutable fields directly.
+## Match rules and lifecycle
 
-Retain the 10 ms simulation step. Define the within-tick order for simultaneous
-inputs, placement, lines/funds, report generation, FIFO attacks, bazaar entry,
-and deaths. Choose and test simultaneous top-out semantics; current side-order
-execution is not sufficient evidence of fairness. Both bazaar participants must
-be ready before the server resumes the match.
+- Both players use human gravity, scoring, controls, and all 34 weapons.
+  Human matches have no free Condor; buy a spy for opponent board/funds reports.
+- A bazaar opens at the shared line threshold. Purchases and refunds are private.
+  A player who selects Done cannot change purchases; both must finish to resume.
+- Inputs are ordered by arrival at the server. Gravity advances both boards
+  in 10 ms steps; simultaneous gravity top-outs produce a draw. A sequential
+  input that ends a match takes effect before a later arriving input.
+- Pause requires both players to agree. Either can resume. The room has a shared
+  60-second explicit pause allowance; expiry resumes automatically.
+- A lost connection suspends play. Each player has a cumulative 30-second
+  reconnect allowance for the match. Reloading the same tab restores its seat
+  from session storage and a fresh authoritative snapshot; unacknowledged
+  commands are not replayed. An already connected seat cannot be taken over.
+- One absent player forfeits after grace expires. If both are absent, the room
+  ends without a winner. Surrender ends a match immediately. Use New room for
+  another match; there is no in-place rematch negotiation yet.
+- Waiting and ended rooms expire after five idle minutes. Rooms have a maximum
+  lifetime of 30 minutes. A running match that exceeds this limit, its event
+  limit, or a one-second server scheduling stall ends in a draw with a reason.
+  Ended results are retained until cleanup and cannot be changed by later input.
+- Rooms live in memory. A server restart loses matches and invalidates links.
+  There are no accounts, rankings, spectators, or automatic durable recovery.
 
-Add server-side state serialization with all cell metadata, current piece,
-random states, timers, inventory, pending attacks, reconnaissance and controller
-state. The current display snapshots and cumulative hashes cannot restore a
-match. Keep serialization separate from the per-player network view.
-Include piece-manager selection/cycle state and weapon application counts as
-well as durations; the current piece and RNG alone do not reproduce future play.
-The existing browser `bt_tick` caps each call at 100 ms. Add an explicit server
-catch-up budget and overload policy rather than silently losing elapsed time
-by feeding long wall-clock gaps to that browser adapter.
+The client deliberately waits for server responses instead of predicting moves.
+Network round-trip time therefore affects control responsiveness. Hiding a tab
+stops local input and requests a mutual pause; it does not silently stop the
+other player's match. Sound remains a set of placeholders.
 
-Gate: two scripted human controllers finish matches with every weapon enabled;
-replays and save/restore agree in native and WASM builds, and offline Ernie tests
-remain unchanged. Include simultaneous Swap/Susan/Keating, spy expiry during a
-clear, first bazaar, both bazaar exits, and same-tick deaths.
+## Protocol and privacy
 
-## 2. Define protocol and private state views
+Protocol version 1 uses JSON text over same-origin `/ws`. First messages are
+`create`, `join` with `room` and `invite`, or `reconnect` with `room` and `token`.
+A `joined` response assigns `side`, a seat `token`, current `ack`, and the SHA-256
+`rules` fingerprint of the compiled WASM. Only the creator receives `invite`.
+Invitation and seat secrets are separate random 192-bit values. Seat credentials
+stay in tab session storage and never appear in invitation URLs.
 
-Start with bounded JSON messages for inspectability. Specify a protocol version,
-rules/catalog fingerprint, room ID, connection epoch, monotonically increasing
-input sequence, server tick, command type, and validated payload. The server
-assigns the acting player from the authenticated connection, not a client field.
-Use bounded integers with documented ranges; do not transmit native structs,
-pointers, or host-width values. Binary encoding can follow measured need.
+Subsequent messages include `v: 1` and a positive safe-integer `seq`:
 
-Client commands: create/join, ready, input, buy, refund, launch, bazaar-ready,
-pause-request/accept, resume, surrender, and reconnect. Server responses:
-welcome, room state, match start, acknowledged input sequence, player snapshot,
-bazaar state, pause state, result, and structured rejection.
+```json
+{"v":1,"type":"input","seq":1,"command":0}
+```
 
-Only the server advances time, generates pieces, resolves purchases, applies
-weapons, and declares results. Reject wrong-phase commands, invalid slots,
-unaffordable purchases, duplicate/stale sequences, nonfinite values, and oversized
-messages. Initial limits to tune: 4 KiB inbound commands, 16 KiB snapshots, and
-60 gameplay commands/second with a bounded burst. These are proposed game limits,
-not library defaults or benchmarked capacity.
+Commands are `ready`, `input` (0 left, 1 right, 2 rotate, 3 soft drop, 4 hard drop),
+`buy` with `token` (0-33), `refund` or `launch` with `slot` (0-9), `bazaar-ready`,
+`surrender`, `pause`, and `resume`. The authenticated socket determines the side.
+Client-supplied side fields have no authority. Sequences may have gaps; duplicate
+or older sequences receive a snapshot without reapplying the action. A new valid
+sequence is acknowledged even when the command is rejected, preventing replay
+of rejected commands after a phase change.
 
-Send a viewer only their own board, inventory and funds, public opponent score/
-lines, and their permitted reconnaissance report. Do not send the opponent's
-raw board, arsenal, RNG seed/state, or full checkpoint to a browser. Existing
-`bt_op_cells`, funds, and side-selectable arsenal exports are local/test APIs;
-they must not become remote response fields. The free Condor default applies
-to Ernie matches. Human matches start without that Ernie-only allowance.
-Own-board snapshots and any later prediction must also respect Bug Report and
-Twilight visibility; server checkpoints contain hidden cell metadata that must
-not be sent merely to make prediction convenient.
+Responses are `state` snapshots or `error` with `code` and `message`. States
+include `tick`, `ack`, phase, readiness/connections, result, own board/funds/
+inventory/effects, public opponent score/lines, catalog, and the viewer's cached
+reconnaissance report. They exclude opponent raw cells, funds, arsenal, seeds,
+RNG state, and checkpoints. Own cells retain Bug Report/Twilight filtering.
+Phases are `waiting`, `playing`, `paused`, `bazaar`, `reconnecting`, and `ended`.
+Only the server advances time or decides purchases, attacks, and outcomes.
 
-Gate: protocol fixtures cover every command and rejection; reconnect snapshots
-preserve the same visibility; inspection of all outbound messages finds no
-hidden opponent state. Fuzz malformed/truncated payloads and sequence boundaries.
+The service validates exact Origin values at upgrade, accepts only text JSON,
+and limits frames to 4 KiB. Each socket has a 60-message/second token bucket with
+a burst of 120; exceeding it disconnects. Defaults allow 32 rooms, 64 sockets,
+and 16 sockets per source IP. A 10-second handshake timeout and ping/pong checks
+clean up idle connections. Per-socket outgoing buffering is capped at 256 KiB;
+slow consumers are disconnected. Snapshots arrive at 20 Hz plus command replies.
+These are conservative bounds, not a measured public-service capacity guarantee.
+A reverse proxy needs its own connection and request limits. The server does
+not trust forwarded client-IP headers; behind a proxy its IP cap is shared.
 
-## 3. Build private rooms and a playable baseline
+## Replay and checks
 
-Add a transport service and a browser online-mode adapter. Use a single server
-process initially, in-memory rooms, and unguessable invitation/session tokens.
-Room links identify invitations; reconnect credentials identify the authorized
-seat. A second tab cannot silently take over an occupied seat. Expire abandoned
-rooms and idle sessions. Keep online mode visibly separate from offline restart.
+`createService()` in `server/index.cjs` exposes privileged in-process
+`exportCheckpoint(room)` and `restoreCheckpoint(checkpoint)` methods. Checkpoints
+record the seed, rules fingerprint, ordered engine commands, and every fixed
+clock step (consecutive ticks are compressed). Restoring replays that exact
+history into a new WASM instance and returns private views for verification.
+The network has no checkpoint endpoint.
 
-The first client renders server snapshots without prediction. Run simulation
-at 100 Hz and initially send snapshots at 20 Hz, plus immediate phase/result
-events. Coalesce obsolete snapshots, keep reliable control messages ordered,
-and disconnect persistently slow consumers. Bound inbound and outbound queues;
-monitor outgoing `bufferedAmount`. See
-[MDN bufferedAmount](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/bufferedAmount).
+This is an event replay checkpoint, not raw C++ memory serialization. It retains
+all deterministic piece selection, timers, attacks, inventory and spy state by
+reconstruction, avoiding compiler-dependent memory layouts. It takes time
+proportional to match history and rejects incompatible rules or malformed events.
+It does not reattach room sockets or persist credentials. Durable failover would
+need stored room metadata and a recovery policy in addition to these checks.
 
-Gate: two independent browsers on separate networks complete a full match with
-bazaar, purchases, attacks, recon, result, and rematch. Test desktop and actual
-mobile devices at this stage, with 50/150/300 ms round-trip latency and jitter.
-Measure input-to-visible-response latency and server tick lag before adding
-prediction or increasing update frequency.
+```sh
+make -C web test test-wasm check-dist
+npm test --prefix server
+# Playwright must be installed, with browsers downloaded:
+NODE_PATH=/path/to/node_modules node web/tests/online.cjs
+```
 
-## 4. Handle disconnects, lifecycle, and abuse
+Native/WASM tests cover two-human gravity/scoring, both-ready bazaar transitions,
+bilateral attacks, reflected delivery, spies, pause, surrender, and same-tick
+deaths alongside the existing offline weapon and replay suites. Socket tests
+exercise isolated rooms, malformed commands, privacy, sequence replay, reconnect,
+forfeit, pause limits, Origin/frame/rate bounds and checkpoint reconstruction.
+Browser checks exercise two independent contexts, invitations, both players'
+controls, pause, reload reconnect, results, and portrait/landscape layouts.
 
-Proposed casual-match policy: a disconnected seat gets one bounded 30-second
-reconnect grace period with server-controlled suspension. Reconnection replaces
-the socket epoch, supplies a fresh private snapshot, and rejects old inputs.
-One missing player after grace forfeits; both missing players abandon the room
-without a ranked result. Repeated disconnects cannot grant unlimited pauses.
-An explicit pause requires server approval and a limited shared pause budget.
-These policies need playtesting before a public service.
+## Next steps
 
-Tab hiding stops local input and requests suspension; it cannot unilaterally
-freeze an online match as the offline client does. Server time and the agreed
-pause policy decide progression. Handle page exit, network changes, sleep/wake,
-duplicate sockets, reconnect during bazaar, and reconnect after a final result.
+1. Playtest across real devices and separate networks at 50/150/300 ms round-trip
+   latency with jitter. Measure input latency, tick lag, memory and bandwidth
+   at increasing room counts before selecting a hosting size or public limits.
+2. Add local prediction only if those measurements justify its complexity.
+   Reconcile acknowledged input without publishing opponent seeds or hidden cells.
+3. Decide persistence and identity requirements before accounts or rankings.
+   Add durable IDs, idempotent result recording, recoverable room metadata and
+   an explicit server-crash outcome policy. Optimize checkpoints if replay costs
+   become significant. Multi-process routing follows measured capacity needs.
+4. Consider native interoperability independently. The original Motif network
+   uses daemon discovery and peer TCP sockets in `BTNetManager.C`, with gameplay
+   messages in `BTCommManager.C` and native framing in `PacketBuffer.C`.
+   A WebSocket-to-TCP tunnel alone does not handle that topology or its trust
+   model. Audit all payload widths, including `sendBoard`'s unsigned-long sizing,
+   before writing a constrained translation gateway.
 
-Require TLS, check the exact Origin allowlist at upgrade, authenticate the seat,
-authorize every room command, and bound connections, messages, and room creation.
-Log outcomes and protocol failures without logging credentials. WebSocket
-authentication/origin/message validation guidance is covered by the
-[OWASP WebSocket Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/WebSocket_Security_Cheat_Sheet.html).
-
-Gate: disconnect/reconnect scenarios do not duplicate purchases or attacks,
-change outcomes, expose hidden state, or leave permanent rooms. Saturation and
-malformed-message tests keep memory bounded and protect healthy matches.
-
-## 5. Decide persistence and responsiveness from measurements
-
-If latency tests require prediction, predict only the local board using server
-supplied piece information. Add explicit checkpoint/reconciliation support,
-discard acknowledged inputs, and replay remaining validated local inputs.
-Do not expose opponent seeds to enable client-side simulation of both boards.
-Keep the simpler authoritative-only path until prediction proves correct across
-queued attacks, gravity changes, bazaar, and terminal states.
-
-Before rankings, add durable match IDs, authenticated identities, transactional
-result recording, and idempotency. The server owns outcomes; a browser cannot
-submit its claimed win. Record rules version and input/event trace for diagnosis.
-Define server-crash behavior: the first private beta can explicitly abandon
-in-memory matches; a ranked service needs recoverable checkpoints or a clear
-no-result policy. Do not promise reconnect across a server restart beforehand.
-
-Gate: replayed completed matches reproduce results; repeated result writes are
-idempotent; measured concurrency meets an agreed capacity target without tick
-drift. Only then choose multi-process room placement and shared storage.
-
-## 6. Optional native interoperability
-
-Inventory and test the entire native topology and payload format, including
-32/64-bit board and database fields. Build a constrained gateway with explicit
-message translation and native challenge lifecycle handling. Do not expose a
-general-purpose arbitrary TCP proxy. Native clients trust peer-provided scores
-and game events, so native interoperability needs its own trust/ranking policy.
-
-Gate: browser/native matches pass the same bazaar, weapon, recon, disconnect,
-and result fixtures. This milestone must not block browser-to-browser delivery.
-
-## First implementation slice
-
-When multiplayer implementation is authorized, begin with milestone 1: a
-transport-independent two-human controller and deterministic fixtures. Then
-write protocol fixtures before adding room transport. Hosting provider, public
-matchmaking, accounts/rankings, and native interoperability remain explicit
-later choices. No deployment or service changes are part of this plan.
+The design follows the [MDN WebSocket API](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API)
+and its [buffering guidance](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/bufferedAmount),
+the [ws server documentation](https://github.com/websockets/ws), and
+[OWASP WebSocket guidance](https://cheatsheetseries.owasp.org/cheatsheets/WebSocket_Security_Cheat_Sheet.html).
+[Emscripten networking](https://emscripten.org/docs/porting/networking.html)
+describes socket proxies for a possible future native compatibility experiment.

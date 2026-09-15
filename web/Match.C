@@ -78,7 +78,10 @@ void BrowserMatch::placed(BrowserGame &game, int count) {
 }
 
 void BrowserMatch::start(unsigned seed, int mode, int level) {
-  versus_ = mode == 1;
+  humans_ = mode == 2;
+  versus_ = mode == 1 || humans_;
+  ready_[0] = ready_[1] = false;
+  opponent.setComputer(!humans_);
   level_ = std::max(0, std::min(level, 2));
   result_ = 0;
   paused_ = bazaar_ = false;
@@ -96,13 +99,13 @@ void BrowserMatch::start(unsigned seed, int mode, int level) {
   recon_[0].reset(seed ^ 0xa341316cu);
   recon_[1].reset(seed ^ 0xc8013ea4u);
   reporting_[0] = reporting_[1] = false;
-  freeRecon_ = versus_;
+  freeRecon_ = versus_ && !humans_;
   freeReconPending_ = freeRecon_;
   if (freeRecon_) recon_[0].activate(BT_CONDOR, 65535);
 }
 
 bool BrowserMatch::toggleRecon() {
-  if (!versus_ || result_) return false;
+  if (!versus_ || humans_ || result_) return false;
   freeRecon_ = !freeRecon_;
   freeReconPending_ = freeRecon_;
   recon_[0].deactivate();
@@ -114,12 +117,7 @@ bool BrowserMatch::toggleRecon() {
 void BrowserMatch::input(int command) {
   if (result_ || bazaar_) return;
   if (command == 5) {
-    paused_ = !paused_;
-    player.setPaused(paused_);
-    opponent.setPaused(paused_);
-    if (!paused_) aiElapsed_ = aiAttackElapsed_ = 0;
-    // Resume schedules full timer intervals, as native Xt does.
-    pending_ = 0;
+    if (!humans_) setPaused(!paused_);
     return;
   }
   if (paused_) return;
@@ -133,6 +131,7 @@ void BrowserMatch::finish() {
   else if (player.over) result_ = 2;
   else if (versus_ && opponent.over) result_ = 3;
   if (result_) {
+    ready_[0] = ready_[1] = false;
     player.stop();
     opponent.stop();
     recon_[0].deactivate();
@@ -199,11 +198,11 @@ void BrowserMatch::tick(double milliseconds) {
       // Disruption uses the same gravity as the human board, guaranteeing
       // descent while forced movement keeps changing the computer's route.
       const bool disrupted = opponent.weapons.BTActive[BT_HATTER] || opponent.weapons.BTActive[BT_SLICK];
-      opponent.tick(10, disrupted);
-      stepComputer(10);
+      opponent.tick(10, humans_ || disrupted);
+      if (!humans_) stepComputer(10);
     }
     finish();
-    if (versus_ && !result_ && !bazaar_) {
+    if (versus_ && !humans_ && !result_ && !bazaar_) {
       aiAttackElapsed_ += 10;
       if (aiAttackElapsed_ >= 2000) {
         aiAttackElapsed_ = 0;
@@ -236,13 +235,13 @@ int BrowserMatch::arsenalQuantity(int side, int slot) const {
   return arsenals_[side][slot].quantity;
 }
 
-int BrowserMatch::refundable(int slot) const {
-  if (!bazaar_ || slot < 0 || slot >= BT_ARSENAL_SIZE) return 0;
-  return arsenals_[0][slot].purchased;
+int BrowserMatch::refundable(int slot, int side) const {
+  if (result_ || (humans_ && paused_) || !bazaar_ || side < 0 || side > 1 || ready_[side] || slot < 0 || slot >= BT_ARSENAL_SIZE) return 0;
+  return arsenals_[side][slot].purchased;
 }
 
 bool BrowserMatch::buyFor(int side, int token) {
-  if (!bazaar_ || result_ || side < 0 || side > 1 || !supportedWeapon(token)) return false;
+  if ((humans_ && paused_) || !bazaar_ || result_ || side < 0 || side > 1 || !supportedWeapon(token) || ready_[side]) return false;
   BrowserGame &game = side ? opponent : player;
   const int cost = price(token, side);
   if (cost < 0 || cost > game.funds) return false;
@@ -266,10 +265,14 @@ bool BrowserMatch::buyFor(int side, int token) {
   return true;
 }
 
-bool BrowserMatch::refund(int index) {
-  if (result_ || !refundable(index)) return false;
-  Slot &slot = arsenals_[0][index];
-  player.funds += slot.paid;
+bool BrowserMatch::refund(int index) { return refundFor(0, index); }
+
+bool BrowserMatch::sideRefund(int side, int index) { return humans_ && refundFor(side, index); }
+
+bool BrowserMatch::refundFor(int side, int index) {
+  if (result_ || !refundable(index, side)) return false;
+  Slot &slot = arsenals_[side][index];
+  (side ? opponent : player).funds += slot.paid;
   --slot.purchased;
   if (!--slot.quantity) slot = Slot{};
   message_ = "Purchase refunded.";
@@ -283,8 +286,10 @@ void BrowserMatch::enterBazaar() {
   opponent.setPaused(true);
   pending_ = 0;
   for (auto &arsenal : arsenals_) for (auto &slot : arsenal) slot.purchased = 0;
-  shopComputer();
-  message_ = "Bazaar open. Ernie is ready; finish shopping to resume both boards.";
+  ready_[0] = ready_[1] = false;
+  if (!humans_) shopComputer();
+  message_ = humans_ ? "Bazaar open. Both players must finish shopping to resume."
+    : "Bazaar open. Ernie is ready; finish shopping to resume both boards.";
 }
 
 void BrowserMatch::shopComputer() {
@@ -303,8 +308,14 @@ void BrowserMatch::shopComputer() {
 }
 
 bool BrowserMatch::leaveBazaar() {
+  if (humans_) return false;
+  return resumeBazaar();
+}
+
+bool BrowserMatch::resumeBazaar() {
   if (!bazaar_ || result_) return false;
   bazaar_ = false;
+  ready_[0] = ready_[1] = false;
   paused_ = false;
   player.setPaused(false);
   opponent.setPaused(false);
@@ -331,7 +342,41 @@ bool BrowserMatch::launchFor(int side, int index) {
   BTWeapon *weapon = catalogWeapon(slot.token);
   if (!--slot.quantity) slot = Slot{};
   if (!nullified) target.queueWeapon(*weapon);
-  message_ = std::string(side ? "Ernie launched " : "You launched ") + weapon->name_ +
+  message_ = std::string(humans_ ? (side ? "Player 2 launched " : "Player 1 launched ")
+    : side ? "Ernie launched " : "You launched ") + weapon->name_ +
     (nullified ? ": nullified by Mirror." : reflected ? ": reflected back to the launcher." : ": queued for the next piece.");
+  return true;
+}
+
+// Online inputs are applied in server sequence order. Gravity evaluates both
+// boards before finish(), permitting simultaneous top-outs on a shared step.
+bool BrowserMatch::sideInput(int side, int command) {
+  if (!humans_ || side < 0 || side > 1 || command < 0 || command > 4 || status() != 0) return false;
+  (side ? opponent : player).input(command);
+  finish();
+  return true;
+}
+
+bool BrowserMatch::setPaused(bool paused) {
+  if (result_) return false;
+  paused_ = paused;
+  player.setPaused(paused || bazaar_);
+  opponent.setPaused(paused || bazaar_);
+  if (!paused_) aiElapsed_ = aiAttackElapsed_ = 0;
+  pending_ = 0;
+  return true;
+}
+
+bool BrowserMatch::sideReady(int side) {
+  if (!humans_ || side < 0 || side > 1 || !bazaar_ || result_ || paused_ || ready_[side]) return false;
+  ready_[side] = true;
+  if (ready_[0] && ready_[1]) return resumeBazaar();
+  return true;
+}
+
+bool BrowserMatch::sideSurrender(int side) {
+  if (!humans_ || side < 0 || side > 1 || result_) return false;
+  (side ? opponent : player).over = true;
+  finish();
   return true;
 }

@@ -44,9 +44,12 @@ static std::vector<int> state(BrowserGame &game) {
 }
 
 static void fillRow(BrowserGame &game, int y, int dieValue) {
+  // Replay fixtures may complete a partially filled row. fill() transfers
+  // ownership into a vacant square; replacing existing boxes leaks them.
   for (int x = 0; x < BT_BOARD_WTH; ++x)
-    game.board.fill(x, y, x == 0 ? game.board.box_manager_->dieCreate(x, y, dieValue)
-                                : game.board.box_manager_->create(x, y, BT_RED));
+    if (!game.board.occupied(x, y))
+      game.board.fill(x, y, x == 0 ? game.board.box_manager_->dieCreate(x, y, dieValue)
+                                  : game.board.box_manager_->create(x, y, BT_RED));
   game.board.landed(0, y);
 }
 
@@ -288,6 +291,8 @@ static void replay() {
   }
 }
 
+void humanRules();
+
 int main(int argc, char **argv) {
   if (argc == 2 && std::string(argv[1]) == "--replay") { replay(); return 0; }
   lineRules();
@@ -308,5 +313,6 @@ int main(int argc, char **argv) {
   upsidePlannerRules();
   reconRules();
   reconMatchRules();
+  humanRules();
   std::cout << "Core tests passed: rules, scoring, RNG, planner, lifecycle, weapons, bazaar.\n";
 }

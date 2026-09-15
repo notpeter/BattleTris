@@ -124,5 +124,48 @@ const createBattleTris = require("../build/battletris.js");
   game._bt_reset(42);
   for (let token = 0; token < 34; ++token) assert.equal(game._bt_remaining(0, token), 0);
   assert.equal(game._bt_arsenal_quantity(1, 0), 0);
+  game._bt_online_start(42);
+  assert.equal(game._bt_mode(), 2);
+  assert.equal(game._bt_toggle_recon(), 0);
+  for (const side of [0, 1]) {
+    assert.equal(game._bt_side_recon_known(side), 0);
+    assert.equal(game._bt_side_recon_remaining(side), 0);
+    const rp = game._bt_side_recon_cells(side) >>> 2;
+    assert(Array.from(game.HEAP32.subarray(rp, rp + 280)).every(id => id === 0));
+    assert.equal(game._bt_side_score(side), 0);
+    assert.equal(game._bt_side_lines(side), 0);
+    assert.equal(game._bt_side_funds(side), 0);
+    assert.equal(game._bt_side_pending(side), 0);
+    assert.equal(game._bt_side_ready_state(side), 0);
+    assert.equal(game._bt_side_refundable(side, 0), 0);
+    assert(game._bt_side_price(side, 0) > 0);
+    assert.equal(game._bt_side_buy(side, 0), 0);
+    assert.equal(game._bt_side_refund(side, 0), 0);
+    assert.equal(game._bt_side_launch(side, 0), 0);
+    assert.equal(game._bt_side_ready(side), 0);
+    assert.equal(game._bt_side_input(side, 5), 0);
+    assert.equal(game._bt_side_input(side, 4), 1);
+    assert(game._bt_side_score(side) > 14); // Human drop award, not AI's flat 14.
+  }
+  for (const side of [-1, 2]) {
+    assert.equal(game._bt_side_cells(side), 0);
+    assert.equal(game._bt_side_recon_cells(side), 0);
+    assert.equal(game._bt_side_recon_token(side), -1);
+    assert.equal(game._bt_side_price(side, 0), -1);
+    assert.equal(game._bt_side_input(side, 4), 0);
+    assert.equal(game._bt_side_buy(side, 0), 0);
+    assert.equal(game._bt_side_refund(side, 0), 0);
+    assert.equal(game._bt_side_launch(side, 0), 0);
+    assert.equal(game._bt_side_ready(side), 0);
+    assert.equal(game._bt_side_surrender(side), 0);
+  }
+  assert.equal(game._bt_set_paused(1), 1);
+  assert.equal(game._bt_status(), 1);
+  assert.equal(game._bt_side_input(1, 4), 0);
+  assert.equal(game._bt_set_paused(0), 1);
+  assert.equal(game._bt_side_surrender(1), 1);
+  assert.equal(game._bt_status(), 3);
+  assert.equal(game._bt_side_input(0, 4), 0);
+  assert.equal(game._bt_set_paused(0), 0);
   console.log("WASM smoke test passed: lifecycle, catalogue, natural bazaar, AI shopping, deferred attack, reset.");
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -57,13 +57,13 @@ evaluator with adapted search and timing. Offline matches include a bazaar and
 all 34 weapons with the original prices and durations. Ernie matches begin with
 free Condor reconnaissance, as in the native game; C toggles it. This release is
 silent, with [sound placeholders](web/audio/README.md) ready for future assets.
-Ernie's tactics and movement retain documented adaptations. Multiplayer and
-rankings are excluded. See the [offline release guide](web/RELEASE.md) for
+Ernie's tactics and movement retain documented adaptations. See the [offline release guide](web/RELEASE.md) for
 packaging, checks, and compatibility limits. The native Motif application remains
 supported.
 
-The next phase is described in [MULTIPLAYER.md](MULTIPLAYER.md); it is a plan,
-not an implemented online mode.
+Private two-human matches are available through the authoritative Node.js/WASM
+server. See [MULTIPLAYER.md](MULTIPLAYER.md) for setup, reconnect/pause rules,
+protocol details, verification, and remaining work before a public service.
 
 ## Gameplay
 

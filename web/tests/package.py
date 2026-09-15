@@ -31,6 +31,10 @@ def verify(directory):
     html = (directory / "index.html").read_text()
     assert 'src="' + assets["battletris.js"]["file"] + '"' in html
     assert 'src="' + assets["app.js"]["file"] + '"' in html
+    if "online.html" in assets:
+        online = (directory / "online.html").read_text()
+        assert 'src="' + assets["online.js"]["file"] + '"' in online
+        assert 'src="online.js"' not in online
     loader = (directory / assets["battletris.js"]["file"]).read_text()
     assert json.dumps(assets["battletris.wasm"]["file"]) in loader
     assert '"battletris.wasm"' not in loader
@@ -46,6 +50,8 @@ with tempfile.TemporaryDirectory(prefix="battletris-package-test-") as temporary
     (source / "index.html").write_text('<script src="battletris.js"></script><script src="app.js"></script>')
     (source / "battletris.js").write_text('locateFile("battletris.wasm")')
     (source / "battletris.wasm").write_bytes(b"first binary")
+    (source / "online.html").write_text('<script src="online.js"></script>')
+    (source / "online.js").write_text('draw("assets/icon.svg")')
     (source / "app.js").write_text('startGame("assets/icon.svg")')
     (source / "assets").mkdir()
     (source / "assets" / "icon.svg").write_text("<svg/>")
@@ -72,6 +78,7 @@ with tempfile.TemporaryDirectory(prefix="battletris-package-test-") as temporary
     verify(output)
     assert third["assets"]["assets/icon.svg"] != second["assets"]["assets/icon.svg"]
     assert third["assets"]["app.js"] != second["assets"]["app.js"]
+    assert third["assets"]["online.js"] != second["assets"]["online.js"]
     assert third["assets"]["battletris.js"] == second["assets"]["battletris.js"]
     assert third["assets"]["assets/icon.svg"]["file"] in (output / third["assets"]["app.js"]["file"]).read_text()
 

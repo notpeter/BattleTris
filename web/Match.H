@@ -18,16 +18,24 @@ public:
   BrowserGame player;
   BrowserGame opponent{true};
   void start(unsigned seed, int mode, int level);
-  void reset(unsigned seed) { start(seed, versus_ ? 1 : 0, level_); }
+  void reset(unsigned seed) { start(seed, mode(), level_); }
   void input(int command);
   void tick(double milliseconds);
   int status() const { return result_ ? result_ : bazaar_ ? 5 : paused_ ? 1 : 0; }
-  int mode() const { return versus_ ? 1 : 0; }
+  int mode() const { return humans_ ? 2 : versus_ ? 1 : 0; }
   int linesUntilBazaar() const;
   int price(int token, int side = 0) const;
   int arsenalToken(int side, int slot) const;
   int arsenalQuantity(int side, int slot) const;
-  int refundable(int slot) const;
+  int refundable(int slot, int side = 0) const;
+  bool sideInput(int side, int command);
+  bool sideBuy(int side, int token) { return humans_ && buyFor(side, token); }
+  bool sideRefund(int side, int slot);
+  bool sideLaunch(int side, int slot) { return humans_ && launchFor(side, slot); }
+  bool sideReady(int side);
+  bool sideSurrender(int side);
+  bool setPaused(bool paused);
+  bool ready(int side) const { return side >= 0 && side < 2 && ready_[side]; }
   bool buy(int token) { return buyFor(0, token); }
   bool refund(int slot);
   bool launch(int slot) { return launchFor(0, slot); }
@@ -46,6 +54,7 @@ private:
   };
   std::array<std::array<Slot, BT_ARSENAL_SIZE>, 2> arsenals_;
   BTPlanner planner_;
+  bool humans_ = false, ready_[2] = {false, false};
   bool versus_ = false, paused_ = false, bazaar_ = false;
   int level_ = 0, result_ = 0;
   int nextBazaar_ = 20;
@@ -62,6 +71,8 @@ private:
   void shopComputer();
   bool buyFor(int side, int token);
   bool launchFor(int side, int slot);
+  bool refundFor(int side, int slot);
+  bool resumeBazaar();
   bool applyWeapon(BrowserGame &game, BTWeapon &weapon) override;
   int taxFunds(BrowserGame &game, int gross) override;
   void clearedLines(BrowserGame &game, int count) override;

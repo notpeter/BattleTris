@@ -32,6 +32,7 @@ public:
   ~BrowserGame();
   void receive(BTRingPacket *packet) override;
   void reset(unsigned seed);
+  void setComputer(bool computer) { computer_ = computer; }
   void input(int command);
   void setPaused(bool paused);
   void stop();

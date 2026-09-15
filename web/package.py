@@ -67,9 +67,18 @@ def package(source, target):
             html = html.replace('src="' + script + '"', 'src="' + assets[script]["file"] + '"')
         emit("index.html", html.encode(), hashed=False)
 
+        # The optional online client needs the separately operated room service.
+        # Keep its entry stable while hashing its script and shared artwork.
+        if (source / "online.html").exists():
+            online = asset_references((source / "online.html").read_text())
+            script = emit("online.js", asset_references((source / "online.js").read_text()).encode())
+            online = online.replace('src="online.js"', 'src="' + script + '"')
+            emit("online.html", online.encode(), hashed=False)
+
+
         emit("LICENSE", (ROOT.parent / "LICENSE").read_bytes(), hashed=False)
         if (ROOT / "RELEASE.md").exists():
-            release_notes = (ROOT / "RELEASE.md").read_text().replace("(../PORTING.md)", "(PORTING.md)")
+            release_notes = (ROOT / "RELEASE.md").read_text().replace("(../PORTING.md)", "(PORTING.md)").replace("(../MULTIPLAYER.md)", "(MULTIPLAYER.md)")
             emit("RELEASE.md", release_notes.encode(), hashed=False)
         porting = (ROOT.parent / "PORTING.md").read_text().replace("(web/", "(")
         porting = porting.replace("[`BTGame::exposeEvent`](usr/src/game/BTGame.C)", "`BTGame::exposeEvent`")
@@ -100,8 +109,10 @@ def package(source, target):
             "configure equivalent rules on other hosts (including subpath prefixes).\n"
             "Upload hashed assets before replacing index.html. Keep previous hashed\n"
             "assets during rollout so already-open pages can finish loading.\n"
-            "No server API, account, service worker, or cross-origin isolation is required.\n"
-            "All gameplay runs locally after loading. A first visit still needs a server.\n")
+            "Solo and Ernie need no game server, account, or cross-origin isolation.\n"
+            "Offline gameplay runs locally after loading. A first visit still needs a server.\n"
+            "online.html requires the separate BattleTris room service at /ws.\n"
+            "See MULTIPLAYER.md for server setup; a static host alone cannot run matches.\n")
         if target.exists():
             shutil.rmtree(target)
         shutil.copytree(stage, target)

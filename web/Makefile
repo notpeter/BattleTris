@@ -12,12 +12,12 @@ ENGINE = $(GAME)/BTPiece.C $(GAME)/BTPieceManager.C $(GAME)/BTBoardManager.C \
          $(GAME)/BTBoard.C $(GAME)/BTRingNode.C $(GAME)/BTCBoard.C \
          $(PORTABLE)/BTBoxPortable.C $(PORTABLE)/BTPlanner.C
 SESSION = Game.C Match.C Catalog.C Recon.C
-TESTS = tests/core.C tests/planner.C tests/effects.C tests/combat.C tests/swaps.C tests/peers.C tests/structures.C tests/landing.C tests/motion.C tests/upside.C tests/upside_planner.C tests/recon.C tests/recon_match.C
+TESTS = tests/core.C tests/planner.C tests/effects.C tests/combat.C tests/swaps.C tests/peers.C tests/structures.C tests/landing.C tests/motion.C tests/upside.C tests/upside_planner.C tests/recon.C tests/recon_match.C tests/humans.C
 HEADERS = $(wildcard $(GAME)/*.H $(PORTABLE)/*.H ../usr/src/stdlib/*.H) \
           Game.H Match.H Catalog.H Recon.H build/WeaponData.H
 
 .PHONY: all assets test test-wasm serve dist archive check-dist clean
-all: build/battletris.js build/index.html build/app.js assets
+all: build/battletris.js build/index.html build/app.js build/online.html build/online.js assets
 
 assets: | build
 	rm -rf build/assets
@@ -36,6 +36,10 @@ build/battletris.js: $(ENGINE) $(SESSION) exports.C $(HEADERS) Makefile | build
 	  -sALLOW_MEMORY_GROWTH=1 -sASSERTIONS=1 -o $@
 
 build/index.html: index.html | build
+	cp $< $@
+build/online.html: online.html | build
+	cp $< $@
+build/online.js: online.js | build
 	cp $< $@
 build/app.js: app.js | build
 	cp $< $@

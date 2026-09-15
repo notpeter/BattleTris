@@ -3,9 +3,13 @@
 This release includes solo practice, matches against Ernie at three paces,
 all 34 weapons, shopping/refunds, reconnaissance, keyboard and touch buttons,
 pause/resume, restart, and match results. Gameplay runs locally in WebAssembly.
-There are no accounts, remote opponents, rankings, or saved matches. Reloading
+The offline page has no accounts, remote opponents, rankings, or saved matches. Reloading
 starts a new match. The first page load needs HTTP(S); after loading, play does
 not depend on a game server. This is not an installable/offline-cached PWA.
+
+The separate `online.html` client supports private human matches when connected
+to the room service. See [multiplayer setup](../MULTIPLAYER.md). A static host
+alone cannot provide online matches.
 
 Sound is intentionally absent. The [sound inventory](audio/README.md) lists
 47 empty cues and all 34 weapon mappings so recordings can be added later.

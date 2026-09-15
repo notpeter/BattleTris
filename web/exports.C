@@ -71,4 +71,50 @@ EMSCRIPTEN_KEEPALIVE int *bt_recon_cells() {
 }
 EMSCRIPTEN_KEEPALIVE int *bt_cells() { return snapshot(match.player, 0); }
 EMSCRIPTEN_KEEPALIVE int *bt_op_cells() { return snapshot(match.opponent, 1); }
+
+// The server selects a viewer and publishes only that side's private fields.
+// Invalid sides never alias player zero, including pointer-returning getters.
+EMSCRIPTEN_KEEPALIVE void bt_online_start(unsigned seed) { match.start(seed, 2, 0); }
+EMSCRIPTEN_KEEPALIVE int bt_side_input(int side, int command) { return match.sideInput(side, command); }
+EMSCRIPTEN_KEEPALIVE int bt_side_buy(int side, int token) { return match.sideBuy(side, token); }
+EMSCRIPTEN_KEEPALIVE int bt_side_refund(int side, int slot) { return match.sideRefund(side, slot); }
+EMSCRIPTEN_KEEPALIVE int bt_side_launch(int side, int slot) { return match.sideLaunch(side, slot); }
+EMSCRIPTEN_KEEPALIVE int bt_side_ready(int side) { return match.sideReady(side); }
+EMSCRIPTEN_KEEPALIVE int bt_side_surrender(int side) { return match.sideSurrender(side); }
+EMSCRIPTEN_KEEPALIVE int bt_set_paused(int paused) { return match.setPaused(paused != 0); }
+EMSCRIPTEN_KEEPALIVE int *bt_side_cells(int side) {
+  return side < 0 || side > 1 ? nullptr : snapshot(side ? match.opponent : match.player, side);
+}
+EMSCRIPTEN_KEEPALIVE int bt_side_score(int side) {
+  return side < 0 || side > 1 ? 0 : (side ? match.opponent : match.player).score;
+}
+EMSCRIPTEN_KEEPALIVE int bt_side_lines(int side) {
+  return side < 0 || side > 1 ? 0 : (side ? match.opponent : match.player).lines;
+}
+EMSCRIPTEN_KEEPALIVE int bt_side_funds(int side) {
+  return side < 0 || side > 1 ? 0 : (side ? match.opponent : match.player).funds;
+}
+EMSCRIPTEN_KEEPALIVE int bt_side_pending(int side) { return bt_pending(side); }
+EMSCRIPTEN_KEEPALIVE int bt_side_ready_state(int side) { return match.ready(side); }
+EMSCRIPTEN_KEEPALIVE int bt_side_refundable(int side, int slot) { return match.refundable(slot, side); }
+EMSCRIPTEN_KEEPALIVE int bt_side_price(int side, int token) { return match.price(token, side); }
+EMSCRIPTEN_KEEPALIVE int bt_side_recon_known(int side) {
+  return side >= 0 && side < 2 && match.recon(side).known();
+}
+EMSCRIPTEN_KEEPALIVE int bt_side_recon_token(int side) {
+  return side < 0 || side > 1 ? -1 : match.recon(side).token();
+}
+EMSCRIPTEN_KEEPALIVE int bt_side_recon_remaining(int side) {
+  return side < 0 || side > 1 ? 0 : match.recon(side).remaining();
+}
+EMSCRIPTEN_KEEPALIVE int bt_side_recon_funds(int side) {
+  return side < 0 || side > 1 ? 0 : match.recon(side).funds();
+}
+EMSCRIPTEN_KEEPALIVE int *bt_side_recon_cells(int side) {
+  if (side < 0 || side > 1) return nullptr;
+  for (int y = 0; y < BT_BOARD_HGT; ++y)
+    for (int x = 0; x < BT_BOARD_WTH; ++x)
+      reports[side][y * BT_BOARD_WTH + x] = match.recon(side).cell(x, y);
+  return reports[side];
+}
 }
