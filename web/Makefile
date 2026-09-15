@@ -1,6 +1,9 @@
 EMXX ?= em++
 CXX ?= c++
 PYTHON ?= python3
+# emsdk adds a directory containing a `node/` subdirectory to PATH. Resolve
+# through the shell so GNU make cannot mistake that directory for an executable.
+NODE ?= $(shell command -v node)
 GAME = ../usr/src/game
 PORTABLE = ../usr/src/portable
 CPPFLAGS += -DBT_PORTABLE=1 -I$(PORTABLE) -I$(GAME) -I../usr/src/stdlib -I. -Ibuild
@@ -49,9 +52,9 @@ build/core-test.js: $(ENGINE) $(SESSION) $(TESTS) $(HEADERS) Makefile | build
 	  -sENVIRONMENT=node -sASSERTIONS=2 -sSAFE_HEAP=1 -sSTACK_OVERFLOW_CHECK=2 -o $@
 
 test-wasm: all build/core-test.js build/core-test
-	node build/core-test.js
-	node tests/wasm.cjs
-	node tests/compare.cjs
+	"$(NODE)" build/core-test.js
+	"$(NODE)" tests/wasm.cjs
+	"$(NODE)" tests/compare.cjs
 
 serve: all
 	$(PYTHON) -m http.server 8000 --bind 127.0.0.1 --directory build
