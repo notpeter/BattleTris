@@ -6646,6 +6646,8 @@ main (void)
 _ACEOF
 if ac_fn_cxx_try_link "$LINENO"
 then :
+
+else $as_nop
    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: headers" >&5
 printf "%s\n" "headers" >&6; }
         as_fn_error $? "Failed to link with Motif: Use --with-motif-libs." "$LINENO" 5

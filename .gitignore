@@ -1,4 +1,8 @@
 # Build artifacts
+web/build/
+web/dist/
+.playwright-mcp/
+native-results/
 *.o
 *.a
 usr/src/game/BattleTris

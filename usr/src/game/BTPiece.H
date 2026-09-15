@@ -38,6 +38,10 @@ public:
   BTPiece(int color, BTBoardManager *board);
   
   int isMapped (int x, int y);
+  int rotationSize() const { return rot_; }
+  int x() const { return x_; }
+  int y() const { return y_; }
+  int cell(int x, int y) const;
   virtual int isHappy() { return 0; };
 
   int moveTo (int x, int y);

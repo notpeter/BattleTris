@@ -36,7 +36,7 @@ public:
   BTWeapon(BTWeaponToken token)
   : token_(token), duration_(0), price_(0), name_(0), description_(0) {}
 
-  BTWeapon(int token, char * const name, char * const descr,
+  BTWeapon(int token, const char *name, const char *descr,
            unsigned short price, unsigned short duration)
   : token_((BTWeaponToken) token), duration_(duration), price_(price) {
     name_ = new char [strlen(name) + 1];
@@ -46,8 +46,8 @@ public:
   }
 
   ~BTWeapon() {
-    delete name_;
-    delete description_;
+    delete [] name_;
+    delete [] description_;
   }
   BTWeaponToken token() { return token_; }
   unsigned short duration() { return duration_; }

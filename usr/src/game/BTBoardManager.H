@@ -25,6 +25,9 @@
 #include "BTRingNode.H"
 #include "BTWeaponManager.H"
 #include "BTBoard.H"
+#ifdef BT_PORTABLE
+#include "BTRandom.H"
+#endif
 
 class BTBoxManager;
 class BTBoard;
@@ -46,11 +49,18 @@ private:
   void swap (int,int,int,int);
   void removeLine (int line, int x1, int x2);
   void insertLine ();
+  bool upsideGravity(int active) const;
   void flipOnHoriz();  
   void flipOnVert();
 
 public:
   BTBoxManager *box_manager_;
+#ifdef BT_PORTABLE
+  BTRandom random;
+  void swapContents(BTBoardManager &other);
+  void clearStructures();
+#endif
+  int randomInt();
 
   BTBoardManager (BTWeaponManager *weapon,
 		  int width = BT_BOARD_WTH, int height = BT_BOARD_HGT,
@@ -64,6 +74,7 @@ public:
   void landed (int x, int y);
   void redraw();
   void clear();
+  int cell(int x, int y) const;
   void receive (BTRingPacket *packet);
   void newBoard (BTBoard *board);
 };

@@ -13,14 +13,18 @@
 using namespace std;
 #include <assert.h>
 
+#ifndef BT_PORTABLE
 #include "BattleTris.H"
+#endif
 
 #include "BTBoardManager.H"
 #include "BTBox.H"
 #include "BTLine.H"
 #include "BTScore.H"
 #include "BTBoard.H"
+#ifndef BT_PORTABLE
 #include "BTDisplay.H"
+#endif
 
 BTBoardManager::BTBoardManager (BTWeaponManager *weapon, int width, int height,
                                 int computer) 
@@ -48,9 +52,9 @@ BTBoardManager::~BTBoardManager() {
     for (int j = 0; j < height_; j++) 
       if ( map_[i][j] )
 	delete map_[i][j];
-    delete map_[i];
+    delete [] map_[i];
   }
-  delete map_;
+  delete [] map_;
 }
 
 void BTBoardManager::swap (int x1, int y1, int x2, int y2) {
@@ -70,6 +74,14 @@ void BTBoardManager::swap (int x1, int y1, int x2, int y2) {
 
 // This is likely the swilliest swill in Swillsville
 
+bool BTBoardManager::upsideGravity(int active) const {
+#ifdef BT_PORTABLE
+  return active != 0;
+#else
+  return active && !computer_;
+#endif
+}
+
 void BTBoardManager::removeLine (int line, int x1, int x2) {
 
   if (x2 < 0)
@@ -77,12 +89,27 @@ void BTBoardManager::removeLine (int line, int x1, int x2) {
 
   int i, j;
 
+  // At the source edge of gravity there is no neighboring row to shift.
+  // Dispose it explicitly: the loops below skip that row entirely, which
+  // otherwise leaks its boxes (or leaves it occupied while Force is active).
+  const int upside = upsideGravity(weapon_manager_->BTActive[BT_UPBYSIDE]);
+  if (line == (upside ? height_ - 1 : 0)) {
+    for (j = x1; j < x2; ++j) {
+      if (map_[j][line]) {
+        map_[j][line]->erase();
+        box_manager_->dispose(map_[j][line]);
+        map_[j][line] = 0;
+      }
+    }
+    return;
+  }
+
   // The mission here is to remove _line_.  This is done by removing
   // the line, and then dropping the rest of the board down, which
   // gets a little ugly between such weapons as Upbyside, the Force
   // and Bottleneck....
 
-  if (!weapon_manager_->BTActive[BT_UPBYSIDE] || computer_) { 
+  if (!upsideGravity(weapon_manager_->BTActive[BT_UPBYSIDE])) {
     for (i = line; i > 0; i--) {
       if (weapon_manager_->BTActive[BT_BOTTLE]) 
       	if ((i <= BT_BOARD_HGT / 2 + BT_BOTTLE_Y) && 
@@ -162,10 +189,10 @@ void BTBoardManager::insertLine () {
   int i, j;
 
   // Find a random hole
-  int hole = rand() % width_;
+  int hole = randomInt() % width_;
 
   // First take care of the case where we aren\'t upside down
-  if (!weapon_manager_->BTActive[BT_UPBYSIDE] || computer_) { 
+  if (!upsideGravity(weapon_manager_->BTActive[BT_UPBYSIDE])) {
 
     // Before we can insert the line, we need to run through the board
     // pushing everything up a line
@@ -217,8 +244,11 @@ void BTBoardManager::insertLine () {
 
       // Again, the actually pushing of the board
       for (j = x1; j < x2; j++) {
-        if (map_[j][i])
+        if (map_[j][i]) {
           map_[j][i]->erase();
+          if (i == height_ - 1)
+            box_manager_->dispose(map_[j][i]);
+        }
         map_[j][i] = map_[j][i-1];
         if (map_[j][i-1]) {
           map_[j][i-1]->erase();
@@ -282,7 +312,7 @@ void BTBoardManager::receive (BTRingPacket *packet) {
     BTWeapon *wpn = (BTWeapon *) packet->data; 
     switch (wpn->token()) {
     case BT_UPBYSIDE: {
-      if (!upside_ && !computer_) {
+      if (upsideGravity(!upside_)) {
 
         // Why do we need to do this?
         BTBoard board (this);
@@ -304,21 +334,38 @@ void BTBoardManager::receive (BTRingPacket *packet) {
       // to either the top or the bottom...the missing piece will only
       // appear in the middle two quarters of the board.
       int i, j;
-      do {
-        i = rand() % BT_BOARD_WTH;
-        j = (rand() % (BT_BOARD_HGT / 2)) + BT_BOARD_HGT / 4;  
-      } while (occupied (i, j));
+      // A full middle region has no legal target. Count it first so random
+      // placement cannot spin forever; select uniformly among its empty cells.
+      const int first_row = height_ / 4;
+      const int last_row = first_row + height_ / 2;
+      int empty = 0;
+      for (j = first_row; j < last_row; ++j)
+        for (i = 0; i < width_; ++i)
+          if (!occupied(i, j)) ++empty;
+      if (!empty) break;
+      int target = randomInt() % empty;
+      int chosen_x = 0, chosen_y = first_row;
+      for (j = first_row; j < last_row; ++j)
+        for (i = 0; i < width_; ++i)
+          if (!occupied(i, j) && target-- == 0) {
+            chosen_x = i;
+            chosen_y = j;
+          }
+      i = chosen_x;
+      j = chosen_y;
 
       if (wpn->token() == BT_BUG)
         // Create the invisible piece and draw it
         map_[i][j] = box_manager_->create (i, j, BT_INVISIBLE); 	       
       else
         // Create a new box with a random color
-        map_[i][j] = box_manager_->create (i, j, rand() % (BT_NEUTRAL - 1) + 1); 	       
+        map_[i][j] = box_manager_->create (i, j, randomInt() % (BT_NEUTRAL - 1) + 1);
 
       map_[i][j]->moveTo (i, j);
       redraw();
-    if (!computer_) DISPLAY->flush();
+#ifndef BT_PORTABLE
+      if (!computer_) DISPLAY->flush();
+#endif
       break;
     }     
 
@@ -330,8 +377,8 @@ void BTBoardManager::receive (BTRingPacket *packet) {
       /// Actually you need to do more than that.  You need to get a
       /// fucking clue first.
       int x,y,i, j;
-      i = rand() % width_;
-      j = rand() % height_;
+      i = randomInt() % width_;
+      j = randomInt() % height_;
       x = i; y = j;
       int flag = 1;
       BTBox **box = NULL;
@@ -360,7 +407,7 @@ void BTBoardManager::receive (BTRingPacket *packet) {
       for (int i = 0; i < height_; i++)
 	      for (int j = 0; j < width_; j++)
 	        if (map_[j][i] && map_[j][i]->isRemoveable()) {
-		  if ((rand() % 2) == 0) {
+		  if ((randomInt() % 2) == 0) {
 		    map_[j][i]->erase();
 		    box_manager_->dispose (map_[j][i]);
 		    map_[j][i] = 0;
@@ -408,15 +455,28 @@ void BTBoardManager::receive (BTRingPacket *packet) {
     }
 
     case BT_FALL_OUT: {
+#ifdef BT_PORTABLE
+      // Fallout removes the middle six columns, regardless of Force's normal
+      // line-collapse rule. Fixed bottleneck walls remain in place until expiry.
+      for (int y = 0; y < height_; ++y)
+        for (int x = BT_FALL_OUT_LEDGE; x < width_ - BT_FALL_OUT_LEDGE; ++x)
+          if (map_[x][y] && map_[x][y]->isRemoveable()) {
+            map_[x][y]->erase();
+            box_manager_->dispose(map_[x][y]);
+            map_[x][y] = 0;
+          }
+      redraw();
+#else
       // For every line, remove the bottom line and redraw.  This will have
       // the effect of the middle of the board "falling out"
       for (int i = 0; i < height_; i++) {
-        if (!weapon_manager_->BTActive[BT_UPBYSIDE] || computer_) 
+        if (!upsideGravity(weapon_manager_->BTActive[BT_UPBYSIDE]))
           removeLine (height_ - 1, BT_FALL_OUT_LEDGE, width_ - BT_FALL_OUT_LEDGE);
         else
           removeLine (0, BT_FALL_OUT_LEDGE, width_ - BT_FALL_OUT_LEDGE);
         redraw(); 
       }
+#endif
       break;
     }
 
@@ -460,15 +520,18 @@ void BTBoardManager::receive (BTRingPacket *packet) {
 
     case BT_UPBYSIDE: {
       // Need to flip this back...
-      upside_ = 0;
-      if ( !computer_ ) {
+      if (upsideGravity(upside_)) {
         flipOnHoriz();
         redraw();
       }
+      upside_ = 0;
       break;
     }
 
     case BT_BOTTLE: {
+#ifdef BT_PORTABLE
+      clearStructures();
+#else
       // Need to undo the bottle neck and replace it with dead space
       for (int x = 0; x < BT_BOTTLE_X; x++) {
         for (int y = BT_BOARD_HGT / 2 - BT_BOTTLE_Y; 
@@ -483,6 +546,7 @@ void BTBoardManager::receive (BTRingPacket *packet) {
             map_[width_ - x -1][y] = 0;
         }
       }
+#endif
       redraw();
       break;
     }
@@ -621,7 +685,9 @@ void BTBoardManager::redraw() {
     for (int j = 0; j < width_; j++)
       if (map_[j][i]) 
         map_[j][i]->redraw();
+#ifndef BT_PORTABLE
   if (!computer_) DISPLAY->flush();
+#endif
 }
 
 void BTBoardManager::newBoard (BTBoard *board) {
@@ -649,3 +715,42 @@ void BTBoardManager::clear() {
       map_[j][i] = 0;
     }
 }
+
+int BTBoardManager::cell(int x, int y) const {
+  if (x < 0 || y < 0 || x >= width_ || y >= height_) return 0;
+  return map_[x][y] ? map_[x][y]->id() : 0;
+}
+
+int BTBoardManager::randomInt() {
+#ifdef BT_PORTABLE
+  return random.integer();
+#else
+  return rand();
+#endif
+}
+
+#ifdef BT_PORTABLE
+void BTBoardManager::clearStructures() {
+  // Only immovable cells belong to the bottleneck. This tolerates missing or
+  // hidden walls and never erases a normal box that occupies a former wall cell.
+  for (int y = 0; y < height_; ++y)
+    for (int x = 0; x < width_; ++x)
+      if (map_[x][y] && !map_[x][y]->isRemoveable()) {
+        map_[x][y]->erase();
+        box_manager_->dispose(map_[x][y]);
+        map_[x][y] = 0;
+      }
+}
+
+void BTBoardManager::swapContents(BTBoardManager &other) {
+  assert(width_ == other.width_ && height_ == other.height_);
+  BTBox ***previous = map_;
+  map_ = other.map_;
+  other.map_ = previous;
+  // Cell objects retain their complete identity and metadata. Only settled
+  // ownership moves; random streams, weapons and box managers stay per player.
+  fill_count_ = other.fill_count_ = 0;
+  new_fill_[0] = other.new_fill_[0] = nullptr;
+  idiot_ = other.idiot_ = 0;
+}
+#endif

@@ -271,7 +271,7 @@ BTDiePiece::BTDiePiece (BTBoardManager *board)
 
 void BTDiePiece::construct (int x, int y) {
   x_ = x;  y_ = y;
-  map_[1][1] = board_->box_manager_->dieCreate (x_+1,y_+1, rand() % 6 + 1);
+  map_[1][1] = board_->box_manager_->dieCreate (x_+1,y_+1, board_->randomInt() % 6 + 1);
 }  
 
 BTHappyPiece::BTHappyPiece (BTBoardManager *board) 
@@ -661,4 +661,10 @@ void BTLongDongPiece::construct (int x, int y) {
   x_ = x;  y_ = y;
   for (int i = 0; i < 8; i++) 
     map_[i][0] = board_->box_manager_->create (x_+i, y_+0, color_);
+}
+
+int BTPiece::cell(int x, int y) const {
+  if (x < 0 || y < 0 || x >= BT_PIECE_WIDTH || y >= BT_PIECE_HEIGHT)
+    return 0;
+  return map_[x][y] ? map_[x][y]->id() : 0;
 }

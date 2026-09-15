@@ -1,0 +1,90 @@
+name: Browser port
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portable-and-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: emscripten-core/emsdk
+          ref: 4.0.15
+          path: .emsdk
+          persist-credentials: false
+      - name: Install Emscripten
+        run: |
+          ./.emsdk/emsdk install 4.0.15
+          ./.emsdk/emsdk activate 4.0.15
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24.16.0'
+      - name: Install browser test dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/battletris-ui" --no-audit --no-fund playwright@1.62.1
+          node "$RUNNER_TEMP/battletris-ui/node_modules/playwright/cli.js" install --with-deps chromium firefox webkit
+          echo "NODE_PATH=$RUNNER_TEMP/battletris-ui/node_modules" >> "$GITHUB_ENV"
+      - name: Portable and WASM tests, release integrity
+        run: |
+          source .emsdk/emsdk_env.sh
+          make -C web test test-wasm check-dist archive
+          python3 web/audio/check.py
+      - name: Browser checks against development and packaged assets
+        run: |
+          python3 -m http.server 8000 --bind 127.0.0.1 --directory web > "$RUNNER_TEMP/battletris-http.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for _attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8000/build/ > /dev/null; then break; fi
+            sleep 1
+          done
+          BASE_URL=http://127.0.0.1:8000/build/ node web/tests/browsers.cjs
+          python3 web/tests/http_dist.py http://127.0.0.1:8000/dist/
+          BASE_URL=http://127.0.0.1:8000/dist/ node web/tests/browsers.cjs
+      - name: Release archive
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: battletris-browser
+          path: web/build/battletris-browser.zip
+          if-no-files-found: error
+      - name: Browser screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: browser-screenshots
+          path: .playwright-mcp/
+          include-hidden-files: true
+
+  native-motif:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Build original Motif game
+        run: docker build -f tests/native/Containerfile -t battletris-native .
+      - name: Native Ernie smoke test
+        run: |
+          docker create --name battletris-native-check battletris-native
+          result=0
+          docker start --attach battletris-native-check || result=$?
+          docker cp battletris-native-check:/tmp/native-results native-results
+          docker rm battletris-native-check
+          exit "$result"
+      - name: Native screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-motif-results
+          path: native-results/

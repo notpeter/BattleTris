@@ -267,6 +267,7 @@ else
       [ XtAppContext app;
         XmString hello = XmStringCreateSimple("Hello World");
         XtAppMainLoop(app); ],
+      [],
       [ AC_MSG_RESULT(headers)
         AC_MSG_ERROR([Failed to link with Motif: Use --with-motif-libs.]) ]
    )

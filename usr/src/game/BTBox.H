@@ -11,6 +11,10 @@
 
 #include "BTConfig.H"
 
+#ifdef BT_PORTABLE
+#include "BTBoxPortable.H"
+#else
+
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
@@ -149,5 +153,7 @@ protected:
   int value_;
 
 };
+
+#endif /* BT_PORTABLE */
 
 #endif

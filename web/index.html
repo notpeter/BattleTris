@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BattleTris - play offline</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: #191d22; color: #eee; font: 16px monospace; }
+  main { max-width: 980px; margin: auto; padding: 24px; }
+  h1 { color: #ffc65a; margin: 0 0 8px; }
+  h2 { font-size: 18px; margin: 0 0 8px; }
+  p { line-height: 1.5; }
+  .game { display: grid; grid-template-columns: minmax(180px, 280px) minmax(180px, 280px) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .game.solo { grid-template-columns: minmax(180px, 280px) minmax(0, 1fr); }
+  canvas { display: block; width: 100%; height: auto; background: #080b0f;
+    border: 4px ridge #aaa; touch-action: none; }
+  .player canvas, .opponent canvas {
+    width: min(100%, max(100px, calc((100svh - 340px) * .357142857)));
+    margin: auto;
+  }
+  button, select { font: inherit; padding: 10px; border: 3px outset #ccc; color: #111;
+    background: #ccc; }
+  button { cursor: pointer; touch-action: manipulation; }
+  button:active { border-style: inset; }
+  button:focus-visible, canvas:focus-visible, select:focus-visible, summary:focus-visible, #bazaar:focus-visible { outline: 3px solid #ffc65a; }
+  button:disabled, select:disabled { opacity: .5; cursor: default; }
+  label { display: block; margin-top: 12px; }
+  select { width: 100%; margin-top: 6px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+  #status { color: #ffc65a; margin-top: 0; }
+  .stats { font-size: 14px; margin: 0 0 10px; }
+  .note { color: #bac1cb; font-size: 13px; }
+  #bazaar { border: 3px ridge #aaa; background: #242b34; padding: 18px; margin-bottom: 24px; }
+  .shop { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 10px; }
+  .weapon { border: 1px solid #647080; padding: 12px; }
+  .weapon summary { cursor: pointer; font-weight: bold; line-height: 1.4; }
+  .weapon p { margin: 8px 0; }
+  .weapon button { width: 100%; }
+  .arsenal { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .slot { min-width: 0; overflow-wrap: anywhere; }
+  #shop-inventory .arsenal { grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); margin-bottom: 18px; }
+  .slot { border-top: 1px solid #526070; padding-top: 6px; font-size: 13px; }
+  .slot button { font-size: 13px; padding: 7px; margin: 5px 4px 5px 0; }
+  .effects { min-height: 36px; overflow-wrap: anywhere; }
+  #combat-message { min-height: 40px; }
+  .game > *, .weapon, aside { min-width: 0; }
+  .subtitle { margin: 0 0 8px; font-size: 14px; }
+  #status { margin: 0 0 16px; font-size: 14px; }
+  .play-controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 10px 0; }
+  .play-controls button { min-height: 44px; padding: 8px 3px; }
+  .settings, .instructions { margin: 0 0 16px; border: 1px solid #526070; padding: 10px; }
+  summary { cursor: pointer; line-height: 1.5; }
+  .effects { margin: 8px 0; }
+  #combat-message:empty { display: none; }
+  @media (max-width: 800px) {
+    .game, .game.solo { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    aside { grid-column: 1 / -1; }
+    .game.solo .player { grid-column: 1 / -1; max-width: 320px; margin: auto; width: 100%; }
+    canvas { max-width: 280px; margin: auto; }
+    .play-controls { max-width: 320px; margin-left: auto; margin-right: auto; }
+  }
+  @media (max-width: 520px) {
+    main { padding: 12px; }
+    h1 { font-size: 26px; margin-bottom: 4px; }
+    .game, .game.solo { display: flex; flex-direction: column; gap: 16px; }
+    .player { order: 0; }
+    aside { order: 1; width: 100%; }
+    .opponent { order: 2; }
+    .board-panel, .game.solo .player { width: 100%; max-width: none; }
+    .player h2 { display: inline; }
+    .player .stats { display: inline-block; margin-left: 12px; vertical-align: middle; }
+    .opponent canvas { width: min(100%, 180px); }
+    .shop { grid-template-columns: minmax(0, 1fr); }
+    #bazaar { padding: 12px; }
+  }
+  @media (max-height: 520px) and (min-width: 521px) {
+    main { padding: 8px 12px; }
+    h1 { font-size: 22px; margin-bottom: 4px; }
+    .subtitle { display: none; }
+    #status { margin-bottom: 8px; }
+    .game, .game.solo { grid-template-columns: minmax(280px, 1fr) minmax(120px, 1fr); }
+    .player, .game.solo .player { display: grid; grid-template-columns: minmax(60px, 110px) minmax(160px, 1fr); gap: 8px; max-width: none; grid-column: auto; }
+    .player h2, .player .stats { grid-column: 1 / -1; margin: 0; }
+    .player .stats br { display: none; }
+    .player #score::after { content: ' / '; }
+    .player canvas { grid-column: 1; width: min(100%, calc((100svh - 170px) * .357142857)); }
+    .play-controls { grid-column: 2; grid-template-columns: repeat(2, minmax(0, 1fr)); align-self: center; margin: 0; width: 100%; }
+    .player .effects { grid-column: 1 / -1; }
+    .opponent canvas { width: min(100%, calc((100svh - 210px) * .357142857)); }
+  }
+</style>
+<main>
+  <h1>BattleTris</h1>
+  <p class="subtitle">Solo practice or offline Ernie match</p>
+  <p id="status" role="status">Loading game...</p>
+  <noscript><p>BattleTris needs JavaScript enabled to run. Enable it, then reload this page.</p></noscript>
+  <section id="load-error" hidden aria-label="Game could not start">
+    <p>The game files could not be loaded. Check your connection and try again.</p>
+    <button id="retry-load">Retry loading</button>
+  </section>
+  <section id="bazaar" hidden tabindex="-1" aria-labelledby="bazaar-heading">
+    <h2 id="bazaar-heading">Weapons bazaar</h2>
+    <p>Both boards are stopped. Ernie has finished shopping. Buy weapons, then select Done to resume.</p>
+    <p>Available funds: $<strong id="shop-funds">0</strong>. Ten arsenal slots; matching weapons stack.</p>
+    <p class="note">Undo removes only copies bought during this visit. Earlier inventory cannot be sold. Carter doubles prices while active.</p>
+    <div class="controls"><button id="done-shopping" disabled>Done - resume match</button></div>
+    <div id="shop-inventory"></div>
+    <div id="shop" class="shop"></div>
+  </section>
+  <div class="game" id="game-layout">
+    <section class="board-panel player" aria-labelledby="player-heading">
+      <h2 id="player-heading">You</h2>
+      <p class="stats">Score: <span id="score">0</span><br>Lines: <span id="lines">0</span> / Funds: $<span id="funds">0</span></p>
+      <canvas id="board" width="300" height="840" tabindex="0"
+        aria-label="Your BattleTris board. Arrow keys move and rotate, space drops, P pauses."></canvas>
+      <div class="controls play-controls" aria-label="Game controls">
+        <button data-command="0" disabled aria-label="Move left">Left</button>
+        <button data-command="2" disabled>Rotate</button>
+        <button data-command="1" disabled aria-label="Move right">Right</button>
+        <button id="pause" disabled>Play</button>
+        <button data-command="3" disabled>Down</button>
+        <button data-command="4" disabled>Drop</button>
+      </div>
+      <p id="player-effects" class="note effects"></p>
+    </section>
+    <section class="board-panel opponent" id="opponent-panel" aria-labelledby="opponent-heading">
+      <h2 id="opponent-heading">Ernie</h2>
+      <p class="stats">Score: <span id="op-score">0</span><br>Lines: <span id="op-lines">0</span> / Funds: $<span id="op-funds">0</span></p>
+      <canvas id="opponent-board" width="300" height="840" aria-label="Reconnaissance report of Ernie's settled board"></canvas>
+      <p id="recon-status" class="note"></p>
+      <button id="toggle-recon">Disable Condor (C)</button>
+      <p id="opponent-effects" class="note effects"></p>
+    </section>
+    <aside>
+      <details class="settings">
+      <summary>Match settings and restart</summary>
+      <label for="mode">Mode on restart</label>
+      <select id="mode" disabled>
+        <option value="1" selected>Play Ernie offline</option>
+        <option value="0">Solo practice</option>
+      </select>
+      <label for="level">Ernie pace on restart</label>
+      <select id="level" disabled>
+        <option value="0" selected>Lethargic</option>
+        <option value="1">Focused</option>
+        <option value="2">Caffeinated</option>
+      </select>
+      <div class="controls"><button id="restart" disabled>Restart</button></div>
+      </details>
+      <section id="combat" aria-label="Combat status">
+        <p id="bazaar-countdown"></p>
+        <p id="combat-message" class="note" role="status"></p>
+        <section id="inventory-panel" aria-labelledby="arsenal-heading">
+          <h2 id="arsenal-heading">Your arsenal</h2>
+          <div id="arsenal" class="arsenal"></div>
+        </section>
+      </section>
+      <details class="instructions">
+      <summary>Controls and gameplay</summary>
+      <p class="note">Left / right: move<br>Up: rotate<br>Down: step down<br>Space: drop<br>P: pause<br>C: toggle Condor<br>1-9 / 0: launch arsenal slot</p>
+      <p class="note">Clear dice to earn their pip values. Clearing multiple lines multiplies the funds. A smile is worth $150 only on the turn it lands.</p>
+      <p class="note">First to top out loses. Pause stops both boards.</p>
+      <p class="note">Offline matches open the bazaar every 20 combined lines. Queued attacks arrive at a piece boundary. Mirror makes the affected opponent's future attacks rebound; some are nullified.</p>
+      <p class="note">Swap exchanges settled boards and replaces the peer's falling piece. Keating transfers funds or debt; Mondale shares earnings. Lawyers queues a rise for each peer-cleared line while active. Mirror nullifies Swap, Lazy Susan, Mondale, Keating, Have a Nice Day, and Mirror.</p>
+      <p class="note">Fallout opens the middle six columns below the board; pieces can fall through without earning funds. Bottleneck narrows the middle of the board to four columns. Swap cancels Bottleneck on both boards.</p>
+      <p class="note">A blocked descent gives 150 ms to slide or rotate; movement does not reset the timer. Slide Denied removes this grace. Hard drop always locks immediately.</p>
+      <p class="note">Hatter rotates your piece every 20 ms. Slick moves it sideways every 20 ms and reverses at obstacles. Manual down stops Slick for the current piece; landing grace also stops its sideways movement.</p>
+      <p class="note">Upbyside-down flips the board, spawns at the bottom, and reverses gravity and horizontal controls. Rotation stays the same. Swap restores normal gravity on both boards.</p>
+      <p class="note">As in native Ernie matches, free Condor starts enabled; C toggles it. Reports show the settled board after placement, never the falling piece or arsenal. Ames reports about half the cells and unreliable funds; Ace reports about 85% and usually accurate funds; Condor is accurate.</p>
+      </details>
+      <details class="instructions">
+      <summary>About this browser port</summary>
+      <p class="note">Solo practice and offline Ernie matches include all 34 weapons. This release plays without sound. Matches stay in memory; reloading starts over. Ernie's movement and tactics are adapted from the original game. Multiplayer is not included.</p>
+      </details>
+    </aside>
+  </div>
+</main>
+<script>
+(() => {
+  let ready = false;
+  const failed = () => {
+    if (ready) return;
+    document.getElementById('status').textContent = 'Game could not start.';
+    document.getElementById('load-error').hidden = false;
+  };
+  const timeout = setTimeout(failed, 30000);
+  document.addEventListener('battletris:ready', () => {
+    ready = true;
+    clearTimeout(timeout);
+    document.getElementById('load-error').hidden = true;
+  }, { once: true });
+  document.addEventListener('battletris:load-error', failed);
+  window.addEventListener('error', event => {
+    if (event.target instanceof HTMLScriptElement) failed();
+  }, true);
+  document.getElementById('retry-load').addEventListener('click', () => location.reload());
+})();
+</script>
+<script src="battletris.js"></script>
+<script src="app.js"></script>
+</html>

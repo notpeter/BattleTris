@@ -1,0 +1,935 @@
+{
+  "schema_version": 1,
+  "status": "placeholders_only",
+  "native_asset_root": "usr/src/share/sounds/",
+  "asset_url_base": "./audio/",
+  "cues": [
+    {
+      "id": "welcome",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "welcome()",
+        "paths": [
+          "welcome/*.au",
+          "welcome/.r_rated/*.au"
+        ],
+        "selection": "random_pool",
+        "notes": "The .r_rated pool is optional in native builds; welcome() selects directly from its pool."
+      }
+    },
+    {
+      "id": "game.start",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "start(); BT_START receive case is silent",
+        "paths": [
+          "start/*.au",
+          "start/.r_rated/*.au"
+        ],
+        "selection": "random_pool",
+        "notes": "The .r_rated pool is optional in native builds."
+      }
+    },
+    {
+      "id": "move.bad",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_IDIOT / BT_BAD_MOVE",
+        "paths": [
+          "idiot/*.au",
+          "idiot/.r_rated/*.au"
+        ],
+        "selection": "random_pool",
+        "notes": "The .r_rated pool is optional in native builds."
+      }
+    },
+    {
+      "id": "danger.near_death",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_IDIOT / BT_NEAR_DEATH; rand() % 4 == 0",
+        "paths": [
+          "near_death/*.au",
+          "near_death/.r_rated/*.au"
+        ],
+        "selection": "random_pool",
+        "notes": "The .r_rated pool is optional in native builds."
+      }
+    },
+    {
+      "id": "line.tetris",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_LINE; increment >= 4 and < 8",
+        "paths": [
+          "tetris/*.au",
+          "tetris/.r_rated/*.au"
+        ],
+        "selection": "random_pool",
+        "notes": "The .r_rated pool is optional in native builds."
+      }
+    },
+    {
+      "id": "weapon.survived",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_OFF for Four-by-Four, Feared Weird, Slick or Hatter",
+        "paths": [
+          "survived/*.au",
+          "survived/.r_rated/*.au"
+        ],
+        "selection": "random_pool",
+        "notes": "The .r_rated pool is optional in native builds."
+      }
+    },
+    {
+      "id": "game.won",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_DEAD",
+        "paths": [
+          "won/*.au",
+          "won/.r_rated/*.au"
+        ],
+        "selection": "random_pool",
+        "notes": "The .r_rated pool is optional in native builds."
+      }
+    },
+    {
+      "id": "game.lost",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_GAME_OVER with null packet data",
+        "paths": [
+          "lost/*.au",
+          "lost/.r_rated/*.au"
+        ],
+        "selection": "random_pool",
+        "notes": "The .r_rated pool is optional in native builds."
+      }
+    },
+    {
+      "id": "weapon.launch.expensive",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_LAUNCH; price > 400 except Gimp",
+        "paths": [
+          "launched/*.au",
+          "launched/.r_rated/*.au"
+        ],
+        "selection": "random_pool",
+        "notes": "The .r_rated pool is optional in native builds."
+      }
+    },
+    {
+      "id": "weapon.launch.cheap",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_LAUNCH; price <= 100 except Gimp",
+        "paths": [
+          "launched/wimpy/*.au",
+          "launched/wimpy/.r_rated/*.au"
+        ],
+        "selection": "random_pool",
+        "notes": "The .r_rated pool is optional in native builds."
+      }
+    },
+    {
+      "id": "line.eight",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_LINE; increment == 8",
+        "paths": [
+          "misc/sally.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "line.happy",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_FUNDS >= BT_HAPPY_VAL (150) arms happy flag; next BT_LINE increment == 1 plays and clears flag",
+        "paths": [
+          "misc/im_so_happy.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "smiley.missed",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_IDIOT / BT_MISSED_SMILEY",
+        "paths": [
+          "misc/doh.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "move.airslide",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_AIRSLIDE",
+        "paths": [
+          "tetris/hoooah.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "game.pause",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_PAUSE toggles paused_ from false to true; resume is silent",
+        "paths": [
+          "misc/freeze_program.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "bazaar.wait",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "playJeopardy(); BTGame::jeotime every 7600 ms while in_baz_ == 1",
+        "paths": [
+          "misc/jeopardy.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "weapon.gimp.launch",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_LAUNCH / BT_GIMP; overrides price-based launch cue",
+        "paths": [
+          "weapons/gimp.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "weapon.reagan.activate",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_ON / BT_REAGAN",
+        "paths": [
+          "weapons/flush.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "weapon.feared_weird.activate",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_ON / BT_FEARED_WEIRD",
+        "paths": [
+          "weapons/sub_dive_horn.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "weapon.bug.activate",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_ON / BT_BUG",
+        "paths": [
+          "weapons/Bottle.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "weapon.piece_it.activate",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_ON / BT_PIECE_IT",
+        "paths": [
+          "weapons/Bottle.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "weapon.fall_out.activate",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_ON / BT_FALL_OUT",
+        "paths": [
+          "weapons/swish.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "weapon.hatter.activate",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_ON / BT_HATTER",
+        "paths": [
+          "weapons/haveyou_gone_mad.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "weapon.keating.activate",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_ON / BT_KEATING",
+        "paths": [
+          "weapons/Got_Your_Nose.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "weapon.speedy.activate",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_ON / BT_SPEEDY",
+        "paths": [
+          "weapons/MeepMeep.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "weapon.upbyside.activate",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_ON / BT_UPBYSIDE",
+        "paths": [
+          "weapons/World_Gone_TopsyTurvy.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "weapon.gimp.activate",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_ON / BT_GIMP",
+        "paths": [
+          "weapons/cmon.au",
+          "misc/.r_rated/gimp.au"
+        ],
+        "selection": "resource_variant",
+        "notes": "Native r_rated selects the alternate path."
+      }
+    },
+    {
+      "id": "weapon.susan.activate",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_ON / BT_SUSAN",
+        "paths": [
+          "weapons/give_to_me.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "weapon.blind.activate",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_ON / BT_BLIND",
+        "paths": [
+          "weapons/Explosion-2.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "weapon.rise_up.activate",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_ON / BT_RISE_UP",
+        "paths": [
+          "weapons/jeffersons.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "weapon.force.activate",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_ON / BT_FORCE",
+        "paths": [
+          "weapons/force.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "weapon.four_by_four.activate",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_ON / BT_FOUR_BY_FOUR",
+        "paths": [
+          "weapons/abandon-ship.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "weapon.slick.activate",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_ON / BT_SLICK",
+        "paths": [
+          "weapons/clinton.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "weapon.twilight.activate",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTSoundManager.C",
+        "trigger": "BT_WPN_ON / BT_TWILIGHT",
+        "paths": [
+          "weapons/TwilightZone.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "welcome.a_team",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTStartup.C",
+        "trigger": "constructor with a_team resource enabled",
+        "paths": [
+          "welcome/a-team.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "ernie.start",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTStartup.C",
+        "trigger": "handleComputer(); all but highest level",
+        "paths": [
+          "misc/knight1.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "ernie.start.highest",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTStartup.C",
+        "trigger": "handleComputer(); highest level",
+        "paths": [
+          "misc/bionic.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "challenge.received",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTStartup.C",
+        "trigger": "challenge(BTPlayer *); BT_BIFF or default location",
+        "paths": [
+          "misc/play_a_game.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "challenge.reject.retry",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTStartup.C",
+        "trigger": "handleNo(); rejections remain",
+        "paths": [
+          "misc/soft_stool.au",
+          "misc/nervous.au",
+          "misc/letsgo.au",
+          "misc/Homer_Scream.au",
+          "misc/oj_married.au",
+          "idiot/coverup1.au",
+          "misc/failure.au"
+        ],
+        "selection": "random_pool"
+      }
+    },
+    {
+      "id": "challenge.reject.final",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTStartup.C",
+        "trigger": "handleNo(); final rejection",
+        "paths": [
+          "misc/sorry.au",
+          "misc/beastie_chico.au"
+        ],
+        "selection": "resource_variant"
+      }
+    },
+    {
+      "id": "about.default",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTStartup.C",
+        "trigger": "handleAboutOK(); click_ == 2 with no author egg selected",
+        "paths": [
+          "misc/cant_touch.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "about.us",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTStartup.C",
+        "trigger": "handleAboutOK(); click_ == 2; Charlie, Mike and Bryan eggs all selected",
+        "paths": [
+          ".eggs/us.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "about.charlie",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTStartup.C",
+        "trigger": "handleAboutOK(); click_ == 2; charlie egg selected",
+        "paths": [
+          ".eggs/charlie.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "about.mike",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTStartup.C",
+        "trigger": "handleAboutOK(); click_ == 2; mike egg selected",
+        "paths": [
+          ".eggs/mike.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "about.bryan",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTStartup.C",
+        "trigger": "handleAboutOK(); click_ == 2; bryan egg selected",
+        "paths": [
+          ".eggs/bryan.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "about.libby",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTStartup.C",
+        "trigger": "handleAboutOK(); click_ == 2; libby egg selected",
+        "paths": [
+          ".eggs/libby.au"
+        ],
+        "selection": "single"
+      }
+    },
+    {
+      "id": "about.kevin",
+      "assets": [],
+      "native": {
+        "source": "usr/src/game/BTStartup.C",
+        "trigger": "handleAboutOK(); click_ == 2; kevin egg selected",
+        "paths": [
+          ".eggs/kevin.au"
+        ],
+        "selection": "single"
+      }
+    }
+  ],
+  "weapons": [
+    {
+      "token": "BT_FEARED_WEIRD",
+      "number": 0,
+      "name": "The Feared Weird",
+      "activation_cue": "weapon.feared_weird.activate",
+      "expiration_cue": "weapon.survived",
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_FOUR_BY_FOUR",
+      "number": 1,
+      "name": "Four-by-Four",
+      "activation_cue": "weapon.four_by_four.activate",
+      "expiration_cue": "weapon.survived",
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_HATTER",
+      "number": 2,
+      "name": "The Mad Hatter",
+      "activation_cue": "weapon.hatter.activate",
+      "expiration_cue": "weapon.survived",
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_UPBYSIDE",
+      "number": 3,
+      "name": "Upbyside-down",
+      "activation_cue": "weapon.upbyside.activate",
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_FALL_OUT",
+      "number": 4,
+      "name": "Fallout",
+      "activation_cue": "weapon.fall_out.activate",
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_SWAP",
+      "number": 5,
+      "name": "Swap meet",
+      "activation_cue": null,
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_LAWYERS",
+      "number": 6,
+      "name": "Lawyer's delite",
+      "activation_cue": null,
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_RISE_UP",
+      "number": 7,
+      "name": "Rise up",
+      "activation_cue": "weapon.rise_up.activate",
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_FLIP_OUT",
+      "number": 8,
+      "name": "Flip out",
+      "activation_cue": null,
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_SPEEDY",
+      "number": 9,
+      "name": "Speedy Gonzales",
+      "activation_cue": "weapon.speedy.activate",
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_MISSING",
+      "number": 10,
+      "name": "Missing Pieces",
+      "activation_cue": null,
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_PIECE_IT",
+      "number": 11,
+      "name": "Piece It Together",
+      "activation_cue": "weapon.piece_it.activate",
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_BLIND",
+      "number": 12,
+      "name": "The Blind Cleric",
+      "activation_cue": "weapon.blind.activate",
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_MONDALE",
+      "number": 13,
+      "name": "Mondale '96",
+      "activation_cue": null,
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_KEATING",
+      "number": 14,
+      "name": "Keating Five",
+      "activation_cue": "weapon.keating.activate",
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_CARTER",
+      "number": 15,
+      "name": "Carter Years",
+      "activation_cue": null,
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_REAGAN",
+      "number": 16,
+      "name": "Reagan Era",
+      "activation_cue": "weapon.reagan.activate",
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_AMES",
+      "number": 17,
+      "name": "William Ames",
+      "activation_cue": null,
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Native reconnaissance Sonar.au activation is commented out; keep silent."
+    },
+    {
+      "token": "BT_ACE",
+      "number": 18,
+      "name": "Ace of Spies",
+      "activation_cue": null,
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Native reconnaissance Sonar.au activation is commented out; keep silent."
+    },
+    {
+      "token": "BT_CONDOR",
+      "number": 19,
+      "name": "The Condor",
+      "activation_cue": null,
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Native reconnaissance Sonar.au activation is commented out; keep silent."
+    },
+    {
+      "token": "BT_NICE_DAY",
+      "number": 20,
+      "name": "Have a Nice Day",
+      "activation_cue": null,
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_SO_LONG",
+      "number": 21,
+      "name": "So Long",
+      "activation_cue": null,
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_NO_DICE",
+      "number": 22,
+      "name": "No Dice",
+      "activation_cue": null,
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_BUG",
+      "number": 23,
+      "name": "Bug Report",
+      "activation_cue": "weapon.bug.activate",
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_BOTTLE",
+      "number": 24,
+      "name": "Bottle neck",
+      "activation_cue": null,
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_NO_SLIDE",
+      "number": 25,
+      "name": "Slide Denied",
+      "activation_cue": null,
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_SUSAN",
+      "number": 26,
+      "name": "Lazy Susan",
+      "activation_cue": "weapon.susan.activate",
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_MEADOW",
+      "number": 27,
+      "name": "Meadow",
+      "activation_cue": null,
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_MIRROR",
+      "number": 28,
+      "name": "Mirror Mirror",
+      "activation_cue": null,
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_TWILIGHT",
+      "number": 29,
+      "name": "The Twilight Zone",
+      "activation_cue": "weapon.twilight.activate",
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_SLICK",
+      "number": 30,
+      "name": "Slick Willy",
+      "activation_cue": "weapon.slick.activate",
+      "expiration_cue": "weapon.survived",
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_BROKEN",
+      "number": 31,
+      "name": "Broken Record",
+      "activation_cue": null,
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_FORCE",
+      "number": 32,
+      "name": "The Force",
+      "activation_cue": "weapon.force.activate",
+      "expiration_cue": null,
+      "launch_cue": "price_based",
+      "notes": "Null cue means native silence, not a missing asset."
+    },
+    {
+      "token": "BT_GIMP",
+      "number": 33,
+      "name": "The Gimp",
+      "activation_cue": "weapon.gimp.activate",
+      "expiration_cue": null,
+      "launch_cue": "weapon.gimp.launch",
+      "notes": "Null cue means native silence, not a missing asset."
+    }
+  ],
+  "launch_rules": [
+    {
+      "when": "Gimp",
+      "cue": "weapon.gimp.launch"
+    },
+    {
+      "when": "price <= 100",
+      "cue": "weapon.launch.cheap"
+    },
+    {
+      "when": "price > 400",
+      "cue": "weapon.launch.expensive"
+    },
+    {
+      "when": "100 < price <= 400",
+      "cue": null
+    }
+  ],
+  "native_silent_events": [
+    "BT_SCORE",
+    "BT_START in receive (start() is separate)",
+    "pause resume",
+    "ordinary move/rotate/drop/lock",
+    "BT_LINE increment 2 or 3",
+    "reconnaissance activation (commented-out weapons/Sonar.au)"
+  ]
+}

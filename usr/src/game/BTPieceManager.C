@@ -155,6 +155,27 @@ void BTPieceManager::receive (BTRingPacket *packet) {
   default:
     break;
   }
+#ifdef BT_PORTABLE
+  if (packet->token == BT_WPN_ON || packet->token == BT_WPN_OFF) {
+    // Rebuild the combined selection policy. Incremental OFF handlers above
+    // otherwise resurrect normal pieces while another restriction is active.
+    const short *active = board_->weapon_manager_->BTActive;
+    for (int piece = 0; piece <= BT_MAX_PIECES; ++piece) keep_prob_[piece] = 0;
+    const int first = active[BT_FEARED_WEIRD] ? BT_WEIRD_OFFS + 1 : BT_EL_PIECE;
+    const int last = active[BT_FEARED_WEIRD] ? BT_WLONG_PIECE : BT_BOX_PIECE;
+    for (int piece = first; piece <= last; ++piece)
+      keep_prob_[piece] = BT_DEFAULT_KEEP_PROB;
+    keep_prob_[BT_DIE_PIECE] = active[BT_NO_DICE] ? 0 : BT_DIE_KEEP_PROB;
+    keep_prob_[BT_HAP_PIECE] = BT_EXOTIC_KEEP_PROB;
+    keep_prob_[BT_LONG_DONG_PIECE] = BT_EXOTIC_KEEP_PROB;
+    if (active[BT_FOUR_BY_FOUR]) {
+      keep_prob_[BT_BOX_PIECE] = 0;
+      // Four-by-Four combines with Feared Weird, as in the native ON handler.
+      keep_prob_[BT_4x4_PIECE] = BT_DEFAULT_KEEP_PROB;
+    }
+    if (active[BT_SO_LONG]) keep_prob_[BT_LONG_PIECE] = 0;
+  }
+#endif
   pass (packet);
 }    
 
@@ -181,7 +202,11 @@ BTPiece *BTPieceManager::create (int x, int y) {
   int i = BT_HAP_PIECE;
   double j;
   
+#ifdef BT_PORTABLE
+  if (!hap_on_ && (!broken_ || (broken_ && board_->randomInt() % BT_BROKEN_PROB == 0))) {
+#else
   if (!hap_on_ && (!broken_ || (broken_ && lrand48() % BT_BROKEN_PROB == 0))) {
+#endif
 #ifdef BT_DEBUG_SHOW_STATS
     long k = 0;
     Block<long> stat;
@@ -191,8 +216,12 @@ BTPiece *BTPieceManager::create (int x, int y) {
     do {
 #endif
       do {
-        i = (rand() % BT_MAX_PIECES) + 1;
+        i = (board_->randomInt() % BT_MAX_PIECES) + 1;
+#ifdef BT_PORTABLE
+        j = board_->random.unit();
+#else
         j = drand48();
+#endif
         if ( j < keep_prob_[i] ) break;  
       } while (1);
 #ifdef BT_DEBUG_SHOW_STATS
