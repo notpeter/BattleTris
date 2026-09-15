@@ -1,0 +1,18 @@
+{
+  "description": "Short loopback diagnostic before unchanged-catalog omission; not a capacity guarantee",
+  "recordedUtc": "2026-09-15",
+  "node": "v24.16.0",
+  "platform": "darwin",
+  "arch": "arm64",
+  "cpu": "Apple M5 Pro",
+  "sampleMs": 3000,
+  "controlsPerPlayer": 29,
+  "notes": "Baseline timer first sent at 100 ms. Final harness sends immediately and records 30 controls per player. Synthetic delay is ordered and has deterministic jitter; zero delay still uses scheduled callbacks.",
+  "scenarios": [
+    { "rooms": 1, "syntheticRttMs": 0, "ackP50Ms": 3.37, "ackP95Ms": 4.01, "receivedPayloadKiBPerSec": 569.76, "receivedPayloadKiBPerPlayerSec": 284.88, "tickRateMin": 100.29, "tickRateMax": 100.29, "serverCpuPercentOneCore": 3.54, "serverRssMiB": 62.45, "serverEventLoopDelayP95Ms": 11.44 },
+    { "rooms": 4, "syntheticRttMs": 0, "ackP50Ms": 3.81, "ackP95Ms": 5.85, "receivedPayloadKiBPerSec": 2259.49, "receivedPayloadKiBPerPlayerSec": 282.44, "tickRateMin": 99.65, "tickRateMax": 99.65, "serverCpuPercentOneCore": 7.43, "serverRssMiB": 64.09, "serverEventLoopDelayP95Ms": 11.41 },
+    { "rooms": 8, "syntheticRttMs": 0, "ackP50Ms": 4.26, "ackP95Ms": 6.52, "receivedPayloadKiBPerSec": 4557.68, "receivedPayloadKiBPerPlayerSec": 284.85, "tickRateMin": 100.62, "tickRateMax": 100.62, "serverCpuPercentOneCore": 10.7, "serverRssMiB": 68.23, "serverEventLoopDelayP95Ms": 11.4 },
+    { "rooms": 1, "syntheticRttMs": 50, "ackP50Ms": 51.68, "ackP95Ms": 56.11, "receivedPayloadKiBPerPlayerSec": 282.37 },
+    { "rooms": 1, "syntheticRttMs": 150, "ackP50Ms": 152.81, "ackP95Ms": 165.14, "receivedPayloadKiBPerPlayerSec": 279.86 }
+  ]
+}

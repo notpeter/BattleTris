@@ -12,7 +12,7 @@
   gimp.src = 'assets/gimp.png';
   let socket, generation = 0, reconnectTimer, attempts = 0, seq = 0;
   let room = null, token = null, snapshot = null, invitation = '', previousPhase = null;
-  let terminalError = false, seatRetries = 0;
+  let terminalError = false, seatRetries = 0, catalog = [];
   const controls = [...document.querySelectorAll('[data-command]')];
   const weapons = new Map(), cards = new Map();
   const slots = Array.from({ length: 10 }, (_, slot) => {
@@ -58,7 +58,10 @@
       try { data = JSON.parse(event.data); } catch { return; }
       if (data.v !== 1) return;
       if (data.type === 'joined') {
-        joined = true; seatRetries = 0;
+        joined = true;
+        // Every authenticated connection starts with a full catalog.
+        catalog = [];
+        seatRetries = 0;
         seq = Math.max(seq, data.ack || 0);
         room = data.room; token = data.token;
         storageSet('battletris-seat:' + room, token);
@@ -75,7 +78,8 @@
       } else if (data.type === 'state') {
         // Reconnection resumes the server's accepted sequence; commands are never replayed.
         seq = Math.max(seq, data.ack || 0);
-        snapshot = data;
+        if (data.catalog) catalog = data.catalog;
+        snapshot = { ...data, catalog };
         render();
       } else if (data.type === 'error') {
         // Reload can connect before the old socket's close reaches the server.

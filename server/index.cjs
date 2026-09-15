@@ -25,6 +25,10 @@ const array = (game, pointer) => Array.from(game.HEAP32.subarray(pointer >> 2, (
 function seat() { return { socket: null, token: secret(), ack: 0, ready: false, deadline: null, graceLeft: null, disconnectedAt: null }; }
 function model(game, seed) {
   return { id: crypto.randomBytes(9).toString('base64url'), invite: secret(), game, seed,
+    catalog: Array.from({ length: game._bt_weapon_count() }, (_, token) => ({ token,
+      name: game.UTF8ToString(game._bt_weapon_name(token)),
+      description: game.UTF8ToString(game._bt_weapon_description(token)),
+      duration: game._bt_weapon_duration(token) })),
     seats: [seat(), seat()], started: false, ended: false, forcedResult: null, tick: 0, events: [],
     paused: false, disconnectPaused: false, pauseRequestedBy: null, pauseLeft: 60000,
     pauseStarted: null, created: Date.now(), touched: Date.now(), message: '' };
@@ -69,9 +73,7 @@ function view(room, side) {
     funds: known ? g._bt_side_recon_funds(side) : null,
     cells: known ? array(g, g._bt_side_recon_cells(side)) : null };
   for (let token = 0; token < g._bt_weapon_count(); token++) {
-    snapshot.catalog.push({ token, name: g.UTF8ToString(g._bt_weapon_name(token)),
-      description: g.UTF8ToString(g._bt_weapon_description(token)), price: g._bt_side_price(side, token),
-      duration: g._bt_weapon_duration(token) });
+    snapshot.catalog.push({ ...room.catalog[token], price: g._bt_side_price(side, token) });
     const remaining = g._bt_remaining(side, token);
     if (remaining) snapshot.own.effects.push({ token, remaining });
   }
@@ -110,10 +112,22 @@ async function createService(options = {}) {
   function send(socket, message) {
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
     if (socket.bufferedAmount > 262144) { socket.terminate(); return; }
+    // Catalog text is immutable for a room. Transmit it on the first active
+    // snapshot and whenever this viewer's prices change (for example Carter).
+    // A new socket always receives the full catalog, including on reconnect.
+    if (message.type === 'state' && message.own) {
+      const prices = message.catalog.map(item => item.price).join(',');
+      if (socket.catalogPrices === prices) {
+        message = { ...message };
+        delete message.catalog;
+      } else socket.catalogPrices = prices;
+    }
     socket.send(JSON.stringify(message));
   }
   const error = (socket, code, message) => send(socket, { v: 1, type: 'error', code, message });
-  function broadcast(room) { room.seats.forEach((s, side) => send(s.socket, view(room, side))); }
+  function broadcast(room) {
+    room.seats.forEach((s, side) => { if (s.socket) send(s.socket, view(room, side)); });
+  }
   function attach(socket, room, side, host = false) {
     const s = room.seats[side];
     if (s.disconnectedAt !== null) s.graceLeft = Math.max(0, s.graceLeft - (Date.now() - s.disconnectedAt));

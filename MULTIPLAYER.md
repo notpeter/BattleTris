@@ -96,11 +96,15 @@ of rejected commands after a phase change.
 
 Responses are `state` snapshots or `error` with `code` and `message`. States
 include `tick`, `ack`, phase, readiness/connections, result, own board/funds/
-inventory/effects, public opponent score/lines, catalog, and the viewer's cached
+inventory/effects, public opponent score/lines, catalog updates, and the viewer's cached
 reconnaissance report. They exclude opponent raw cells, funds, arsenal, seeds,
 RNG state, and checkpoints. Own cells retain Bug Report/Twilight filtering.
 Phases are `waiting`, `playing`, `paused`, `bazaar`, `reconnecting`, and `ended`.
 Only the server advances time or decides purchases, attacks, and outcomes.
+The first active snapshot on each socket includes the complete catalog. Later
+snapshots omit `catalog` when that viewer's prices are unchanged; the client
+retains its last catalog. Price changes, including Carter, send a full updated
+catalog. Reconnect always supplies it again. Checkpoint views remain complete.
 
 The service validates exact Origin values at upgrade, accepts only text JSON,
 and limits frames to 4 KiB. Each socket has a 60-message/second token bucket with
@@ -133,6 +137,8 @@ make -C web test test-wasm check-dist
 npm test --prefix server
 # Playwright must be installed, with browsers downloaded:
 NODE_PATH=/path/to/node_modules node web/tests/online.cjs
+# Diagnostic measurements, intentionally not a timing-sensitive CI gate:
+npm run benchmark --prefix server
 ```
 
 Native/WASM tests cover two-human gravity/scoring, both-ready bazaar transitions,
@@ -140,8 +146,36 @@ bilateral attacks, reflected delivery, spies, pause, surrender, and same-tick
 deaths alongside the existing offline weapon and replay suites. Socket tests
 exercise isolated rooms, malformed commands, privacy, sequence replay, reconnect,
 forfeit, pause limits, Origin/frame/rate bounds and checkpoint reconstruction.
-Browser checks exercise two independent contexts, invitations, both players'
-controls, pause, reload reconnect, results, and portrait/landscape layouts.
+Browser checks exercise two independent contexts in Chromium, Firefox and
+WebKit, invitations, keyboard/touch controls, pause, reload reconnect, results,
+portrait/landscape layouts, and offline startup/error recovery under server CSP.
+Socket checks also cover catalog omission, full reconnect catalog, and real
+Carter delivery updating only its recipient's prices.
+
+## Local measurements
+
+The repeatable benchmark starts the server in a separate process and drives real
+sockets. A September 15, 2026 run on an Apple M5 Pro with Node 24.16.0 used
+three-second samples and ten movement controls per player per second:
+
+- Sending the catalog only when needed reduced received application payload
+  from approximately 285 to 53 KiB/s per player, about 81%.
+- Eight rooms used about 849 KiB/s aggregate payload bandwidth, 67 MiB server
+  RSS, and 7.5% of one CPU core. Loopback acknowledgment p95 was 5.7 ms.
+- Synthetic ordered 50/150/300 ms RTT with jitter produced acknowledgment p95
+  of 55/164/331 ms. Every submitted control was acknowledged and all rooms stayed
+  active. These measure command acknowledgment, not time until a browser paints.
+
+The fixtures and raw results live in `server/tests`. These short runs exclude
+room initialization, TLS and transport headers, constrained bandwidth, actual
+mobile networks, and prolonged weapon-heavy gameplay. They do not establish
+production capacity. The default 16-socket source-IP cap also means a single
+reverse proxy can admit only eight complete rooms. Measure on the intended host
+before increasing limits or choosing a public deployment size.
+
+Server work was a small part of response time in these samples. Further server
+micro-optimization cannot remove round-trip delay; local prediction remains a
+separate correctness project if real-device playtesting requires it.
 
 ## Next steps
 

@@ -1,17 +1,21 @@
 // Run after `make -C web`: NODE_PATH=<playwright install>/node_modules node web/tests/online.cjs
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { chromium } = require('playwright');
+const playwright = require('playwright');
+const requested = process.argv.slice(2);
+const names = requested.length ? requested : ['chromium', 'firefox', 'webkit'];
+for (const name of names) assert(['chromium', 'firefox', 'webkit'].includes(name), 'Unknown browser: ' + name);
 const { createService } = require('../../server/index.cjs');
 
-(async () => {
+async function check(name) {
   const service = await createService({ graceMs: 3000, pauseMs: 5000,
     seedFactory: () => 42 });
   const address = await service.listen(0, '127.0.0.1');
   const url = `http://127.0.0.1:${address.port}/online.html`;
-  const browser = await chromium.launch({ headless: true });
+  let browser;
   try {
-    const contexts = await Promise.all([browser.newContext(), browser.newContext()]);
+    browser = await playwright[name].launch({ headless: true });
+    const contexts = await Promise.all([browser.newContext({ hasTouch: true }), browser.newContext({ hasTouch: true })]);
     const [host, guest] = await Promise.all(contexts.map(context => context.newPage()));
     const errors = [];
     for (const page of [host, guest]) page.on('pageerror', error => errors.push(error.message));
@@ -32,7 +36,7 @@ const { createService } = require('../../server/index.cjs');
     await host.keyboard.press('ArrowLeft');
     await host.keyboard.press('Space');
     await host.waitForFunction(() => Number(document.querySelector('#score').textContent) > 0);
-    await guest.locator('[data-command="4"]').click();
+    await guest.locator('[data-command="4"]').tap();
     await guest.waitForFunction(() => Number(document.querySelector('#score').textContent) > 0);
     await host.locator('#pause').click();
     await guest.waitForFunction(() => /accept/i.test(document.querySelector('#pause').textContent));
@@ -51,7 +55,7 @@ const { createService } = require('../../server/index.cjs');
       assert(controls.y + controls.height <= height, 'Online controls extend below viewport');
       assert(await host.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
         'Online page overflows horizontally');
-      await host.screenshot({ path: `.playwright-mcp/online-${width}x${height}.png` });
+      await host.screenshot({ path: `.playwright-mcp/online-${name}-${width}x${height}.png` });
     }
     await host.locator('#pause').click();
     await host.waitForFunction(() => !document.querySelector('[data-command="4"]').disabled);
@@ -75,10 +79,12 @@ const { createService } = require('../../server/index.cjs');
     await offline.locator('#load-error').waitFor({ state: 'visible' });
     await offline.close();
     assert.deepEqual(errors, []);
-    console.log('Online browser: invitations, two human inputs, private recon, mutual pause, reload reconnect, and surrender passed');
+    console.log(name + ' online browser: invitations, two human inputs, private recon, mutual pause, reload reconnect, and surrender passed');
     await Promise.all(contexts.map(context => context.close()));
   } finally {
-    await browser.close();
+    await browser?.close();
     await service.close();
   }
-})().catch(error => { console.error(error); process.exitCode = 1; });
+}
+(async () => { for (const name of names) await check(name); })()
+  .catch(error => { console.error(error); process.exitCode = 1; });

@@ -7,12 +7,27 @@ class Client {
   constructor(url, origin = 'http://localhost') {
     this.messages = [];
     this.seq = 0;
+    this.catalog = [];
+    this.catalogUpdates = 0;
+    this.catalogOmissions = 0;
     this.socket = new WebSocket(url, { origin });
     this.open = new Promise((resolve, reject) => {
       this.socket.once('open', resolve);
       this.socket.once('error', reject);
     });
-    this.socket.on('message', data => this.messages.push(JSON.parse(data)));
+    this.socket.on('message', data => {
+      const message = JSON.parse(data);
+      if (message.type === 'state') {
+        if (message.catalog) {
+          this.catalog = message.catalog;
+          if (message.own) this.catalogUpdates++;
+        } else {
+          this.catalogOmissions++;
+          message.catalog = this.catalog;
+        }
+      }
+      this.messages.push(message);
+    });
   }
   async wait(predicate, after = 0) {
     const deadline = Date.now() + 5000;
@@ -70,6 +85,19 @@ class Client {
     await host.state(0, state => state.own && state.phase === 'playing');
     return { host, guest, first, second };
   }
+  async function earnBazaar(shopping) {
+    const shoppers = [shopping.host, shopping.guest];
+    const nextInput = [0, 0];
+    for (const [side, commands] of require('./bazaar-inputs.json')) {
+      await delay(Math.max(0, nextInput[side] - Date.now()));
+      const player = shoppers[side], after = player.messages.length;
+      for (const command of commands) await player.send('input', { command });
+      const moved = await player.state(after, value => value.ack === player.seq);
+      assert.notEqual(moved.phase, 'ended', 'Placement fixture must reach the bazaar');
+      nextInput[side] = Date.now() + commands.length * 17;
+      if (moved.phase === 'bazaar') break;
+    }
+  }
   try {
     const base = `http://127.0.0.1:${address.port}`;
     assert.equal((await fetch(base + '/assets/%00.png')).status, 400);
@@ -95,6 +123,8 @@ class Client {
     await delay(80);
     state = await a.host.state(marker);
     assert.equal(state.own.score, score, 'Duplicate command cannot lock another piece');
+    assert.equal(a.host.catalogUpdates, 1, 'Unchanged catalog is transmitted once');
+    assert(a.host.catalogOmissions > 0, 'Routine snapshots omit unchanged catalog');
     state = await a.guest.command('input', { command: 4 });
     assert(state.own.score > 0, 'Second human can control its board');
     const untouched = await b.host.state(0, value => value.own && value.phase === 'playing');
@@ -156,6 +186,7 @@ class Client {
     returning.seq = joined.ack;
     assert.equal(joined.ack, a.host.seq, 'Reconnect restores sequence acknowledgement');
     const restored = await returning.state(0, value => Boolean(value.own));
+    assert.equal(returning.catalogUpdates, 1, 'Reconnect sends the complete current catalog');
     assert.equal(restored.own.score, beforeDisconnect.own.score);
     assert.deepEqual(restored.own.inventory, beforeDisconnect.own.inventory);
     await returning.close();
@@ -189,17 +220,7 @@ class Client {
     // Seed 42 placements generated with BTPlanner's original board evaluator.
     // Only real inputs are replayed: no server memory or board injection.
     const shopping = await room();
-    const shoppers = [shopping.host, shopping.guest];
-    const nextInput = [0, 0];
-    for (const [side, commands] of require('./bazaar-inputs.json')) {
-      await delay(Math.max(0, nextInput[side] - Date.now()));
-      const player = shoppers[side], after = player.messages.length;
-      for (const command of commands) await player.send('input', { command });
-      const moved = await player.state(after, value => value.ack === player.seq);
-      assert.notEqual(moved.phase, 'ended', 'Placement fixture must reach the bazaar');
-      nextInput[side] = Date.now() + commands.length * 17;
-      if (moved.phase === 'bazaar') break;
-    }
+    await earnBazaar(shopping);
     let shop = await shopping.host.state(0, value => value.phase === 'bazaar');
     assert(shop.own.lines + shop.opponent.lines >= 20, 'Real line clears open the bazaar');
     const condor = shop.catalog.find(item => /condor/i.test(item.name));
@@ -225,6 +246,22 @@ class Client {
     assert.deepEqual(shoppingReplay.views[0].own, shoppingEnd.own,
       'Replay preserves earned purchases and launched attacks');
     console.log('Online bazaar: real line clears, earned funds, buy/refund, two-player ready, paid Condor delivery/report and attack replay passed');
+    // A real Carter attack changes only the recipient's cached shop prices.
+    const inflation = await room();
+    await earnBazaar(inflation);
+    const priced = await inflation.host.state(0, value => value.phase === 'bazaar');
+    const carter = priced.catalog.find(item => /carter/i.test(item.name));
+    await inflation.host.command('buy', { token: carter.token });
+    await inflation.host.command('bazaar-ready');
+    await inflation.guest.command('bazaar-ready');
+    const beforePrices = inflation.guest.catalog;
+    const beforeUpdates = inflation.guest.catalogUpdates;
+    await inflation.host.command('launch', { slot: 0 });
+    const taxed = await inflation.guest.command('input', { command: 4 });
+    assert.deepEqual(taxed.catalog.map(item => item.price), beforePrices.map(item => 2 * item.price));
+    assert.equal(inflation.guest.catalogUpdates, beforeUpdates + 1);
+    assert.equal(inflation.host.catalogUpdates, 1, 'Opponent prices remain private and unchanged');
+    await inflation.host.command('surrender');
     const denied = new WebSocket(url, { origin: 'https://untrusted.invalid' });
     await new Promise((resolve, reject) => {
       denied.once('open', () => { denied.close(); reject(new Error('Invalid Origin accepted')); });

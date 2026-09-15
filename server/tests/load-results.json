@@ -1,0 +1,149 @@
+{
+  "description": "Short loopback diagnostic after unchanged-catalog omission; not a capacity guarantee",
+  "recordedUtc": "2026-09-15",
+  "node": "v24.16.0",
+  "platform": "darwin",
+  "arch": "arm64",
+  "cpu": "Apple M5 Pro",
+  "sampleMs": 3000,
+  "scenarios": [
+    {
+      "rooms": 1,
+      "players": 2,
+      "syntheticRttMs": 0,
+      "elapsedMs": 3001.57,
+      "controlsPerPlayer": 30,
+      "ackP50Ms": 3.22,
+      "ackP95Ms": 3.77,
+      "receivedPayloadKiBPerSec": 106.1,
+      "receivedPayloadKiBPerPlayerSec": 53.05,
+      "snapshotsPerPlayerSec": 38.31,
+      "tickRateMin": 98.95,
+      "tickRateMax": 98.95,
+      "server": {
+        "elapsedMs": 3002.01,
+        "cpuMs": 96.06,
+        "cpuPercentOneCore": 3.2,
+        "rssMiB": 62,
+        "peakRssMiB": 62,
+        "eventLoopDelayP95Ms": 11.44,
+        "eventLoopDelayMaxMs": 11.92
+      }
+    },
+    {
+      "rooms": 4,
+      "players": 8,
+      "syntheticRttMs": 0,
+      "elapsedMs": 3000.9,
+      "controlsPerPlayer": 30,
+      "ackP50Ms": 3.14,
+      "ackP95Ms": 4.66,
+      "receivedPayloadKiBPerSec": 424.51,
+      "receivedPayloadKiBPerPlayerSec": 53.06,
+      "snapshotsPerPlayerSec": 38.32,
+      "tickRateMin": 99.3,
+      "tickRateMax": 99.3,
+      "server": {
+        "elapsedMs": 3001.4,
+        "cpuMs": 117.05,
+        "cpuPercentOneCore": 3.9,
+        "rssMiB": 65.13,
+        "peakRssMiB": 65.13,
+        "eventLoopDelayP95Ms": 11.44,
+        "eventLoopDelayMaxMs": 11.98
+      }
+    },
+    {
+      "rooms": 8,
+      "players": 16,
+      "syntheticRttMs": 0,
+      "elapsedMs": 2999.44,
+      "controlsPerPlayer": 30,
+      "ackP50Ms": 3.44,
+      "ackP95Ms": 5.66,
+      "receivedPayloadKiBPerSec": 849.45,
+      "receivedPayloadKiBPerPlayerSec": 53.09,
+      "snapshotsPerPlayerSec": 38.34,
+      "tickRateMin": 99.02,
+      "tickRateMax": 99.02,
+      "server": {
+        "elapsedMs": 3000.21,
+        "cpuMs": 223.77,
+        "cpuPercentOneCore": 7.46,
+        "rssMiB": 66.91,
+        "peakRssMiB": 66.91,
+        "eventLoopDelayP95Ms": 11.34,
+        "eventLoopDelayMaxMs": 12.19
+      }
+    },
+    {
+      "rooms": 1,
+      "players": 2,
+      "syntheticRttMs": 50,
+      "elapsedMs": 3001.18,
+      "controlsPerPlayer": 30,
+      "ackP50Ms": 51.31,
+      "ackP95Ms": 55.47,
+      "receivedPayloadKiBPerSec": 106.12,
+      "receivedPayloadKiBPerPlayerSec": 53.06,
+      "snapshotsPerPlayerSec": 38.32,
+      "tickRateMin": 99.29,
+      "tickRateMax": 99.29,
+      "server": {
+        "elapsedMs": 3001.79,
+        "cpuMs": 90.11,
+        "cpuPercentOneCore": 3,
+        "rssMiB": 61.89,
+        "peakRssMiB": 61.89,
+        "eventLoopDelayP95Ms": 11.43,
+        "eventLoopDelayMaxMs": 11.73
+      }
+    },
+    {
+      "rooms": 1,
+      "players": 2,
+      "syntheticRttMs": 150,
+      "elapsedMs": 2999.99,
+      "controlsPerPlayer": 30,
+      "ackP50Ms": 153.49,
+      "ackP95Ms": 164.21,
+      "receivedPayloadKiBPerSec": 104.78,
+      "receivedPayloadKiBPerPlayerSec": 52.39,
+      "snapshotsPerPlayerSec": 37.83,
+      "tickRateMin": 99,
+      "tickRateMax": 100.67,
+      "server": {
+        "elapsedMs": 3000.4,
+        "cpuMs": 74.45,
+        "cpuPercentOneCore": 2.48,
+        "rssMiB": 62.09,
+        "peakRssMiB": 62.09,
+        "eventLoopDelayP95Ms": 11.36,
+        "eventLoopDelayMaxMs": 11.55
+      }
+    },
+    {
+      "rooms": 1,
+      "players": 2,
+      "syntheticRttMs": 300,
+      "elapsedMs": 3000.16,
+      "controlsPerPlayer": 30,
+      "ackP50Ms": 308.84,
+      "ackP95Ms": 330.62,
+      "receivedPayloadKiBPerSec": 101.55,
+      "receivedPayloadKiBPerPlayerSec": 50.77,
+      "snapshotsPerPlayerSec": 36.66,
+      "tickRateMin": 100.33,
+      "tickRateMax": 100.33,
+      "server": {
+        "elapsedMs": 3000.63,
+        "cpuMs": 89.89,
+        "cpuPercentOneCore": 3,
+        "rssMiB": 61.83,
+        "peakRssMiB": 61.83,
+        "eventLoopDelayP95Ms": 11.41,
+        "eventLoopDelayMaxMs": 11.8
+      }
+    }
+  ]
+}

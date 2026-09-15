@@ -22,3 +22,38 @@ delivery and later report, and deterministic replay after the attack.
 `web/tests/online.cjs` separately drives two independent browser contexts through
 invitations, readiness, gameplay, mutual pause, responsive layouts, reload
 reconnection, and surrender.
+
+## Short load and latency diagnostic
+
+Run `node server/tests/load.cjs` after building WASM and installing the server
+dependencies. It starts a fresh child server for each scenario, so its CPU and
+RSS measurements exclude the load clients. The scenarios use 1, 4, and 8 active
+rooms on loopback, followed by one room with synthetic 50, 150, and 300 ms RTT.
+Each sample lasts three seconds; `SAMPLE_MS` can select 1000 through 30000 ms.
+
+Both players issue alternating left/right controls on a 100 ms timer. Only
+real protocol commands are used. Bidirectional link callbacks retain order and
+apply a deterministic jitter pattern of +/- 10% of the one-way delay. Even the
+zero-delay scenario passes through scheduled callbacks, so acknowledgment
+latency includes their scheduling overhead. This emulates transport delay and
+does not measure actual distant networks, mobile radios, bandwidth limits, TCP
+congestion, or TLS.
+
+The JSON lines report acknowledgement p50/p95, received application payload
+bandwidth (excluding WebSocket/TCP/TLS headers), snapshot frequency, observed
+authoritative tick progression, and child server CPU/RSS/event-loop delay.
+CPU percentage is relative to one core; event-loop delay uses Node's 10 ms
+histogram resolution. Room initialization is excluded. All submitted controls
+must receive acknowledgements and all rooms must remain active.
+
+These short runs are diagnostics, not capacity or latency guarantees. They
+exercise movement and gravity, not the CPU cost of prolonged matches or every
+weapon. Run longer representative matches on the intended host before choosing
+a public room limit.
+
+`load-baseline.json` and `load-results.json` record representative local runs
+before and after unchanged weapon catalogs stopped being resent. The baseline
+sent 29 controls per player; the final harness sends its first control
+immediately and recorded 30. Compare application payload bandwidth with that
+small workload difference in mind. A three-second tick-rate estimate also has
+snapshot-boundary error; it is not a measurement of long-term clock drift.
