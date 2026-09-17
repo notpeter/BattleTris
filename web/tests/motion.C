@@ -1,3 +1,4 @@
+#include "Drop.H"
 #include "Game.H"
 #include "Match.H"
 #include "BTBox.H"
@@ -19,7 +20,7 @@ void oneCell(BrowserGame &game) {
   game.reset(13);
   BTWeapon happy(BT_NICE_DAY);
   game.queueWeapon(happy);
-  game.input(4);
+  finishDrop(game);
   assert(game.active && game.active->isHappy());
   game.board.clear();
 }
@@ -31,7 +32,7 @@ void elbow(BrowserGame &game) {
       assert(game.active->moveTo(3, 8));
       return;
     }
-    game.input(4);
+    finishDrop(game);
     game.board.clear();
   }
   assert(false && "Seeded stream must produce an elbow");
@@ -163,7 +164,7 @@ void landingAndSuppression() {
   game.tick(100, false);
   assert(game.active->x() == manualX);
   const unsigned generation = game.generation;
-  game.input(4);
+  finishDrop(game);
   assert(game.generation == generation + 1 && !game.slickSuppressed());
   assert(game.slickElapsed() == 0 && game.hatterElapsed() == 0);
 
@@ -197,7 +198,7 @@ void pauseResetAndDirection() {
   game.setPaused(false);
   game.tick(1, false);
   assert(game.active->x() == 0 && game.slickDirection() == 1);
-  game.input(4);
+  finishDrop(game);
   assert(game.slickDirection() == 1 && game.slickElapsed() == 0 && game.hatterElapsed() == 0);
   game.reset(77);
   assert(game.slickDirection() == -1 && !game.slickSuppressed());
@@ -248,7 +249,7 @@ void partitionAndComputerProgress() {
 
   for (BTWeaponToken token : {BT_HATTER, BT_SLICK}) {
     BrowserMatch match;
-    match.start(52, 1, 2);
+    match.start(52, 1, 10);
     match.player.paused = true;
     activate(match.opponent, token, 100);
     const unsigned initial = match.opponent.generation;

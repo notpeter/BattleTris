@@ -1,0 +1,231 @@
+/* Motif palette and bevels from the original X11 interface. */
+:root {
+  color-scheme: light;
+  --background: #bfbfbf;
+  --panel: #a8a8a8;
+  --text: #000;
+  --muted: #222;
+  --accent: #0000ff;
+  --raised: #dedede #686868 #686868 #dedede;
+  --sunken: #686868 #dedede #dedede #686868;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--background); color: var(--text); font: 14px/1.3 Helvetica, Arial, sans-serif; }
+main { max-width: 1400px; margin: auto; padding: 0 30px 12px; }
+a { color: var(--accent); }
+.site-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 48px; margin-bottom: 8px; border-bottom: 2px solid; border-color: #dedede; }
+.brand { color: var(--accent); font: bold 24px Helvetica, Arial, sans-serif; text-decoration: none; }
+nav { display: flex; gap: 6px; }
+nav a { display: block; padding: 5px 12px; border: 2px solid; border-color: var(--raised); text-decoration: none; font-weight: bold; }
+nav a[aria-current] { border-color: var(--sunken); background: var(--panel); }
+h1, h2, p { margin-top: 0; }
+h1 { font-size: 24px; }
+h2 { font-size: 16px; margin-bottom: 10px; }
+.subtitle { display: none; }
+#status { margin-bottom: 8px; }
+.game { display: grid; grid-template-columns: minmax(0, 1fr) 300px minmax(0, 1fr); gap: 8px 24px; align-items: start; }
+.game.solo, .game.no-recon { grid-template-columns: minmax(0, 1fr) 300px; max-width: 900px; margin: auto; }
+.player { grid-column: 1; grid-row: 2; }
+aside { grid-column: 2; grid-row: 2; }
+.opponent { grid-column: 3; grid-row: 2; }
+.game > *, aside { min-width: 0; }
+.match-controls { grid-column: 1 / -1; grid-row: 1; display: flex; justify-content: center; gap: 16px; padding-bottom: 4px; }
+.match-controls #pause { min-width: 100px; }
+.recon-toggle { display: flex; align-items: center; gap: 7px; border: 0; background: none; color: #000; font-weight: normal; }
+.recon-toggle::before { content: ''; width: 13px; height: 13px; border: 2px solid; border-color: var(--sunken); background: var(--panel); }
+.recon-toggle[aria-pressed="true"]::before { background: #0000ff; box-shadow: inset 0 0 0 2px #bfbfbf; }
+.board-panel h2 { font-size: 14px; margin-bottom: 8px; }
+canvas, .recon-placeholder { display: block; width: round(down, 100%, calc(10px / var(--pixel-ratio, 1))); max-width: 360px; height: auto; margin-inline: auto; background: #000; touch-action: none; image-rendering: pixelated; }
+.recon-placeholder { aspect-ratio: 230 / 644; }
+.recon-placeholder > * { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.opponent:has(canvas:not([hidden])) .recon-placeholder { display: none; }
+button, select, input { font: inherit; color: var(--accent); background: var(--background); border: 2px solid; border-color: var(--raised); border-radius: 0; padding: 5px 9px; }
+button { cursor: pointer; touch-action: manipulation; font-weight: bold; }
+button:active:not(:disabled) { border-color: var(--sunken); }
+button:disabled, select:disabled { color: #555; cursor: default; }
+button:hover:not(:disabled), nav a:hover { background: #cacaca; }
+:focus-visible { outline: 2px solid #000; outline-offset: 2px; }
+label { display: block; margin-top: 10px; }
+select, input { width: 100%; margin-top: 5px; border-color: var(--sunken); background: var(--panel); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.play-controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.play-controls button { min-height: 40px; padding: 6px 2px; }
+.score-box { padding: 6px; margin-bottom: 30px; border: 2px solid; border-color: var(--sunken); background: var(--panel); color: var(--accent); font: bold 18px/1.1 'Courier New', monospace; }
+.score-row { display: grid; grid-template-columns: 20ch minmax(0, 1fr); }
+.score-row span { font-variant-numeric: tabular-nums; }
+.score-gap { margin-top: 1.1em; }
+#bazaar-countdown { margin-bottom: 2px; }
+.arsenal { display: grid; gap: 4px; }
+#inventory-panel { margin-bottom: 10px; }
+#arsenal-heading { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.slot { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px; }
+.slot > div { overflow-wrap: anywhere; }
+.slot button { flex: 1; text-align: left; min-height: 31px; padding: 4px; font: inherit; background: var(--panel); }
+.slot button:disabled { color: var(--accent); }
+.note { color: var(--muted); font-size: 13px; }
+.effects { overflow-wrap: anywhere; margin: 6px 0; }
+#recon-status { margin: 6px 0; }
+#combat-message:empty, #connection-error:empty, .effects:empty { display: none; }
+.settings, .instructions { margin-bottom: 4px; padding: 3px 5px; border: 2px solid; border-color: var(--raised); }
+summary { cursor: pointer; color: var(--accent); font-weight: bold; }
+.settings[open] summary, .instructions[open] summary { margin-bottom: 8px; }
+#bazaar { padding: 16px; border: 2px solid; border-color: var(--raised); }
+#bazaar:not([hidden]) ~ .game { display: none; }
+.bazaar-title { margin-bottom: 20px; }
+.bazaar-title img { display: block; width: 490px; max-width: 100%; height: auto; }
+#bazaar-heading { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+#bazaar .shop { display: grid; grid-template-columns: minmax(270px, 1fr) 150px minmax(240px, 1fr); gap: 24px; }
+.weapon-list { grid-row: 1 / 3; width: 100%; min-height: 0; height: 100%; font-size: 17px; font-weight: bold; padding: 3px; margin: 0; }
+.weapon-list option { padding: 2px; color: #d00000; }
+.weapon-list option:checked { color: #bfbfbf; background: #d00000; }
+.shop-actions { display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 20px; padding: 10px 0; }
+.shop-actions > button { width: 120px; min-height: 44px; }
+.shop-actions #done-shopping { font-size: 30px; min-height: 60px; }
+.shop-funds-box { width: 100%; border: 1px solid black; text-align: center; background: var(--panel); font-weight: bold; }
+.shop-funds-box > div { border-bottom: 2px solid black; color: blue; font-size: 32px; }
+#shop-funds { display: block; padding: 12px; color: #d00000; font: bold 32px 'Courier New', monospace; }
+.weapon-info { grid-column: 2 / 4; padding: 8px; border: 2px solid; border-color: var(--sunken); background: var(--panel); color: #d00000; font: bold 17px/1.2 'Courier New', monospace; }
+.weapon-info > p { white-space: pre-wrap; margin: 0 0 18px; }
+.weapon-descriptions { display: grid; }
+.weapon-descriptions > p { grid-area: 1 / 1; margin: 0; }
+#shop-inventory h2 { display: none; }
+#shop-inventory .slot { height: 30px; display: block; }
+#shop-inventory .slot > button:first-child { width: 100%; height: 30px; min-height: 0; padding: 2px 4px; text-align: left; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#shop-inventory .slot > button:first-child[aria-pressed=true] { border-color: var(--sunken); }
+#shop-inventory .slot > button:first-child:disabled { color: #c8c8c8; }
+#shop-inventory .slot > button:last-child { display: none; }
+#shop-inventory .arsenal { gap: 5px; }
+#invite-link { overflow-wrap: anywhere; padding: 8px; border: 2px solid; border-color: var(--sunken); background: var(--panel); }
+#connection-error { color: #a00000; }
+#room-controls { padding: 8px; border: 2px solid; border-color: var(--raised); margin-bottom: 12px; }
+#lobby { display: grid; grid-template-columns: 1.25fr 1fr; gap: 24px; align-items: center; padding: 16px; max-width: 1080px; margin: 20px auto; border: 2px solid; border-color: var(--raised); }
+.lobby-art { display: block; width: 100%; height: auto; }
+.lobby-card { border: 2px solid; border-color: var(--sunken); padding: 16px; margin-bottom: 16px; }
+.lobby-card h2 { color: var(--accent); }
+.lobby-card button { min-height: 36px; }
+.guide { max-width: 1120px; padding-bottom: 40px; }
+.guide-title { padding: 24px 0 12px; }
+.guide-title h1 { color: var(--accent); font-size: 32px; margin-bottom: 8px; }
+.guide-basics { display: grid; grid-template-columns: 1.4fr 1fr; gap: 24px; }
+.guide-basics section { background: #d1d1d1; padding: 20px; border: 2px solid; border-color: var(--raised); }
+.guide h2 { font-size: 22px; margin-top: 24px; }
+.guide-basics h2 { margin-top: 0; }
+.guide p, .guide dd { line-height: 1.5; }
+.weapon-catalog { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.weapon-card { padding: 16px; background: #d1d1d1; border: 2px solid; border-color: var(--raised); }
+.weapon-card dt { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; color: var(--accent); font-weight: bold; }
+.weapon-card strong { font: bold 18px 'Courier New', monospace; }
+.weapon-card small { grid-column: 1 / -1; color: #444; font-weight: normal; text-transform: uppercase; font-size: 11px; }
+.weapon-card dd { margin: 12px 0 0; }
+.game.solo .score-row:nth-child(even) { display: none; }
+@media (min-width: 1001px) and (min-height: 601px) {
+  .game { --board-height: min(calc(100svh - 190px), 1120px); max-width: calc(var(--board-height) * .714285714 + 348px); margin-inline: auto; }
+  .game.solo, .game.no-recon { max-width: calc(var(--board-height) * .357142857 + 324px); }
+  .board-panel h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  canvas, .recon-placeholder { width: round(down, min(100%, calc(var(--board-height) * .357142857)), calc(10px / var(--pixel-ratio, 1))); max-width: none; }
+  .score-box { font-size: clamp(13px, 1.7svh, 16px); margin-bottom: 24px; }
+
+  .slot button { min-height: clamp(22px, 3.4svh, 36px); padding-block: 2px; }
+  aside { max-height: calc(100svh - 140px); overflow-y: auto; scrollbar-width: thin; }
+  #recon-status { font-size: 12px; }
+}
+@media (min-width: 1001px) and (min-height: 601px) and (max-height: 760px) {
+  .arsenal { gap: 2px; }
+  #inventory-panel { margin-bottom: 6px; }
+  .score-box { font-size: 12px; margin-bottom: 12px; }
+
+  .slot button { min-height: 22px; padding-block: 0; font-size: 13px; }
+  aside .settings, aside .instructions { font-size: 12px; line-height: 16px; }
+}
+@media (max-width: 1000px) {
+  main { padding-inline: 20px; }
+  .game, .game.solo, .game.no-recon { grid-template-columns: minmax(180px, 1fr) minmax(250px, 1fr); gap: 24px; }
+  .opponent { grid-column: 1; grid-row: 3; }
+  aside { grid-row: 2 / 4; }
+  .guide-basics { grid-template-columns: 1fr; }
+  .weapon-catalog { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .player canvas { width: round(down, min(100%, max(100px, calc((100svh - 330px) * .357142857))), calc(10px / var(--pixel-ratio, 1))); }
+  #lobby { gap: 28px; }
+}
+@media (max-width: 520px) {
+  main { padding: 0 14px 24px; }
+  .site-header { min-height: 94px; flex-wrap: wrap; gap: 10px; padding: 16px 0 12px; margin-bottom: 16px; }
+  .brand { font-size: 24px; }
+  nav { gap: 0; width: 100%; }
+  nav a { padding: 6px 8px; font-size: 12px; }
+  nav a:first-child { padding-left: 6px; padding-right: 8px; }
+  .subtitle { font-size: 10px; letter-spacing: .6px; }
+  #status { margin-bottom: 12px; font-size: 13px; }
+  .game, .game.solo, .game.no-recon { display: flex; flex-direction: column; gap: 16px; }
+  .match-controls { order: -1; width: 100%; }
+  .weapon-catalog { grid-template-columns: 1fr; }
+  .player { order: 0; width: 100%; }
+  aside { order: 1; width: 100%; }
+  .opponent { order: 2; width: 100%; }
+  .player canvas { width: round(down, min(260px, max(80px, calc((100svh - 405px) * .357142857))), calc(10px / var(--pixel-ratio, 1))); }
+  .opponent canvas { width: round(down, 180px, calc(10px / var(--pixel-ratio, 1))); }
+  .play-controls { max-width: 340px; margin: 12px auto; }
+  .play-controls button { min-height: 44px; }
+  #bazaar { padding: 14px; }
+  #bazaar .shop, #lobby { grid-template-columns: 1fr; }
+  .bazaar-title img { display: block; }
+  #bazaar .weapon-list { grid-row: auto; height: 230px; }
+  .weapon-info { grid-column: auto; }
+  .shop-actions { flex-direction: row; flex-wrap: wrap; gap: 8px; }
+  .shop-funds-box { width: 100%; }
+  .lobby-art { max-width: 240px; }
+  .lobby-actions { order: 0; }
+  .lobby-intro { order: 1; margin-top: 20px; }
+  #lobby { gap: 8px; padding-top: 0; }
+  .lobby-card { padding: 20px; }
+}
+@media (max-height: 600px) and (min-width: 521px) {
+  main { padding: 0 12px 20px; }
+  .site-header { min-height: 54px; margin-bottom: 10px; }
+  .brand { font-size: 22px; }
+  .subtitle { display: none; }
+  #status { margin-bottom: 10px; font-size: 13px; }
+  .game, .game.solo, .game.no-recon { grid-template-columns: minmax(270px, 1fr) minmax(230px, 1fr); gap: 16px; }
+  .player { display: grid; grid-template-columns: 90px minmax(160px, 1fr); gap: 8px; }
+  .player h2, .player .effects { grid-column: 1 / -1; margin: 0; }
+  .player canvas { width: round(down, min(90px, calc((100svh - 200px) * .357142857)), calc(10px / var(--pixel-ratio, 1))); }
+  .play-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); align-self: start; margin: 0; }
+  .play-controls button { min-height: 44px; }
+}
+
+
+@media (min-width: 1001px) and (min-height: 601px) and (pointer: fine) {
+  .player .play-controls { display: none; }
+}
+@media (min-width: 1001px) and (min-height: 601px) and (pointer: coarse) {
+  .game { --board-height: calc(100svh - 230px); }
+  .player .play-controls { display: grid; }
+}
+
+.about-dialog { width: 680px; max-width: calc(100vw - 24px); max-height: calc(100svh - 24px); padding: 24px; background: var(--background); border: 2px solid; border-color: var(--raised); text-align: center; }
+.about-dialog::backdrop { background: #0006; }
+.about-dialog h1 { color: #eeee00; font-size: 34px; margin: 12px 0 36px; }
+.about-authors { display: grid; grid-template-columns: 100px 1fr 100px; align-items: center; gap: 12px; color: #0000ff; font-size: 34px; font-weight: bold; line-height: 1.1; }
+.about-authors img { width: 100%; height: auto; image-rendering: pixelated; }
+.about-authors p { margin-bottom: 12px; }
+.about-authors .about-version { font-size: 14px; color: #eeee00; }
+.about-authors .about-email { font-size: 20px; }
+.about-thanks { color: #cd0000; margin-top: 28px; font-size: 14px; }
+.about-thanks p { margin-bottom: 8px; }
+.about-thanks h2 { font-size: 17px; margin-bottom: 8px; }
+.about-dialog form { margin-top: 40px; }
+.about-dialog form button { color: #cd0000; width: 120px; min-height: 44px; font-weight: normal; }
+@media (max-width: 700px) {
+  .about-dialog { padding: 16px; }
+  .about-authors { grid-template-columns: 50px 1fr 50px; gap: 6px; font-size: clamp(18px, 4.6vw, 30px); }
+  .about-authors .about-email { font-size: 13px; }
+  nav { flex-wrap: wrap; }
+  nav button { font-size: 12px; padding: 5px 8px; }
+}
+
+@media (min-width: 521px) and (max-width: 850px) {
+  #bazaar .shop { grid-template-columns: minmax(220px, 1fr) 110px minmax(160px, 1fr); gap: 12px; }
+  .shop-actions > button { width: 100px; }
+  .weapon-list { font-size: 14px; }
+}

@@ -59,7 +59,7 @@ private:
   std::vector<PendingWeapon> pendingWeapons_;
   void applyPendingWeapons();
   bool computer_, dropAwarded_ = false;
-  bool sliding_ = false;
+  bool sliding_ = false, fastDrop_ = false;
   double slideElapsed_ = 0;
   double hatterElapsed_ = 0, slickElapsed_ = 0;
   int slickDirection_ = -1;

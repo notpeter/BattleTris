@@ -1,3 +1,4 @@
+#include "Drop.H"
 #include "Game.H"
 #include "Match.H"
 #include "BTBox.H"
@@ -18,9 +19,31 @@ void oneCell(BrowserGame &game) {
   game.reset(13);
   BTWeapon happy(BT_NICE_DAY);
   game.queueWeapon(happy);
-  game.input(4);
+  finishDrop(game);
   assert(game.active && game.active->isHappy());
   game.board.clear();
+}
+
+void animatedDrop() {
+  BrowserGame game;
+  oneCell(game);
+  const unsigned generation = game.generation;
+  const int y = game.active->y();
+  game.input(4);
+  assert(game.active->y() == y && game.generation == generation);
+  game.tick(9); assert(game.active->y() == y);
+  game.input(4); // Repeated Space cannot restart the descent timer.
+  game.tick(1); assert(game.active->y() == y + 1);
+  while (!game.sliding()) game.tick(10);
+  const int x = game.active->x();
+  game.tick(100); game.input(0);
+  assert(game.active->x() == x - 1 && game.generation == generation);
+  game.tick(49); assert(game.generation == generation);
+  game.tick(1); assert(game.generation == generation + 1);
+  activate(game, BT_MEADOW, 10);
+  const int slowY = game.active->y();
+  game.input(4); game.tick(19); assert(game.active->y() == slowY);
+  game.tick(1); assert(game.active->y() == slowY + 1);
 }
 
 void exactGraceAndSpam() {
@@ -93,7 +116,11 @@ void pauseAndHardDrop() {
   game.input(3);
   assert(game.sliding());
   game.input(4);
-  assert(!game.sliding() && game.generation == generation + 2);
+  assert(game.sliding() && game.generation == generation + 1);
+  game.tick(100); game.tick(49);
+  assert(game.generation == generation + 1);
+  game.tick(1);
+  assert(game.generation == generation + 2);
 }
 
 void resumeGravity() {
@@ -141,7 +168,7 @@ void deniedAndExpiry() {
 void aiLandingClock() {
   for (int denied = 0; denied <= 1; ++denied) {
     BrowserMatch match;
-    match.start(15, 1, 2);
+    match.start(15, 1, 10);
     match.player.paused = true; // Isolate the computer clock in this fixture.
     if (denied) activate(match.opponent, BT_NO_SLIDE, 1000);
     const unsigned generation = match.opponent.generation;
@@ -177,6 +204,7 @@ void resetAndSwap() {
 } // namespace
 
 void landingRules() {
+  animatedDrop();
   exactGraceAndSpam();
   lateralEscape();
   pauseAndHardDrop();

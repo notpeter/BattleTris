@@ -1,3 +1,4 @@
+#include "Drop.H"
 #include "Game.H"
 #include "BTBox.H"
 #include <cassert>
@@ -33,11 +34,11 @@ void queuedAndTimed() {
   speed.duration_ = 99; // Queue owns scalar metadata.
   assert(game.pendingWeapons() == 1 && !game.weapons.BTActive[BT_SPEEDY]);
   game.input(5);
-  for (int i = 0; i < 20; ++i) { game.tick(100); game.input(4); }
+  for (int i = 0; i < 20; ++i) { game.tick(100); finishDrop(game); }
   assert(game.pendingWeapons() == 1 && !game.weapons.BTActive[BT_SPEEDY]);
   game.input(5);
   const auto generation = game.generation;
-  game.input(4);
+  finishDrop(game);
   assert(game.generation == generation + 1 && game.pendingWeapons() == 0);
   assert(game.weapons.remaining(BT_SPEEDY) == 3);
   assert(game.gravityInterval() == BT_DROP_TIME / 2);
@@ -67,7 +68,7 @@ void queuedAndTimed() {
   BTWeapon reagan(BT_REAGAN);
   game.queueWeapon(reagan);
   assert(game.funds == 37);
-  game.input(4);
+  finishDrop(game);
   assert(game.funds == -37 && !game.weapons.BTActive[BT_REAGAN]);
 }
 
@@ -228,8 +229,7 @@ void boundaryLineRules() {
   for (int upside = 0; upside <= 1; ++upside) {
     for (int force = 0; force <= 1; ++force) {
       BrowserGame game;
-      // Exercise the underlying board's symmetric legacy boundary too, without
-      // enabling unsupported upside-down movement in the browser controller.
+      // Exercise boundary clearing directly, without rotating the board.
       game.weapons.BTActive[BT_UPBYSIDE] = upside;
       if (force) activate(game, BT_FORCE, 2);
       const int row = upside ? BT_BOARD_HGT - 1 : 0;

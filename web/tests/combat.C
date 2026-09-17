@@ -1,3 +1,4 @@
+#include "Drop.H"
 #include "Match.H"
 #include "BTBox.H"
 #include <cassert>
@@ -36,14 +37,14 @@ void activate(BrowserGame &game, BTWeaponToken token, unsigned short duration) {
 
 void bazaarLifecycle() {
   BrowserMatch match;
-  match.start(100, 1, 0);
+  match.start(100, 1, 2);
   assert(match.linesUntilBazaar() == 20 && !match.buy(BT_RISE_UP));
   assert(!match.leaveBazaar() && !match.refund(0) && !match.launch(0));
   openBazaar(match);
   assert(match.player.lines == 10 && match.opponent.lines == 10);
   const int py = match.player.active->y(), oy = match.opponent.active->y();
   const unsigned pg = match.player.generation, og = match.opponent.generation;
-  for (int i = 0; i < 100; ++i) { match.tick(100); match.input(4); }
+  for (int i = 0; i < 100; ++i) { match.tick(100); finishDrop(match); }
   assert(match.player.active->y() == py && match.opponent.active->y() == oy);
   assert(match.player.generation == pg && match.opponent.generation == og);
   assert(match.linesUntilBazaar() == 0);
@@ -78,7 +79,7 @@ void bazaarLifecycle() {
 
 void inventoryBounds() {
   BrowserMatch match;
-  match.start(7, 1, 0);
+  match.start(7, 1, 2);
   openBazaar(match);
   match.player.funds = 1000000;
   assert(!match.buy(-1) && !match.buy(BT_MAX_WEAPONS));
@@ -105,7 +106,7 @@ void inventoryBounds() {
 
   // Carter affects new purchases and refunds use the amount actually paid.
   BrowserMatch carter;
-  carter.start(8, 1, 0);
+  carter.start(8, 1, 2);
   openBazaar(carter);
   carter.player.funds = 1000;
   activate(carter.player, BT_CARTER, 20);
@@ -119,7 +120,7 @@ void inventoryBounds() {
 
 void launchAndMirror() {
   BrowserMatch match;
-  match.start(44, 1, 0);
+  match.start(44, 1, 2);
   openBazaar(match);
   match.player.funds = 10000;
   assert(match.buy(BT_NO_DICE) && match.buy(BT_RISE_UP));
@@ -129,7 +130,7 @@ void launchAndMirror() {
   assert(match.launch(slotFor(match, BT_NO_DICE)));
   assert(match.opponent.pendingWeapons() == 1);
   assert(match.opponent.generation == generation && !match.opponent.weapons.BTActive[BT_NO_DICE]);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.opponent.generation == generation + 1 && match.opponent.pendingWeapons() == 0);
   assert(match.opponent.weapons.remaining(BT_NO_DICE) == catalogWeapon(BT_NO_DICE)->duration());
 
@@ -140,12 +141,12 @@ void launchAndMirror() {
   assert(match.launch(slotFor(match, BT_MIRROR)));
   assert(match.player.pendingWeapons() == 1 && match.opponent.pendingWeapons() == 0);
   assert(inventory(match, 0) == 0); // Nullified weapons are still consumed.
-  match.input(4);
+  finishDrop(match);
   assert(match.player.pendingWeapons() == 0);
 
   // A full target queue rejects the launch without spending its inventory.
   BrowserMatch capped;
-  capped.start(45, 1, 0);
+  capped.start(45, 1, 2);
   openBazaar(capped);
   capped.player.funds = 1000;
   assert(capped.buy(BT_FLIP_OUT));
@@ -158,7 +159,7 @@ void launchAndMirror() {
 
 void aiCombatAndSolo() {
   BrowserMatch match;
-  match.start(55, 1, 0);
+  match.start(55, 1, 2);
   match.opponent.funds = 1500;
   openBazaar(match);
   const int bought = inventory(match, 1);
@@ -168,7 +169,7 @@ void aiCombatAndSolo() {
   assert(inventory(match, 1) == bought - 1);
   assert(match.player.pendingWeapons() == 1);
   assert(match.player.generation == 1); // Queuing does not force a premature lock.
-  match.input(4);
+  finishDrop(match);
   assert(match.player.pendingWeapons() == 0 && match.player.generation == 2);
 
   BrowserMatch solo;
@@ -181,7 +182,7 @@ void aiCombatAndSolo() {
 
 void bazaarFreezesLanding() {
   BrowserMatch match;
-  match.start(67, 1, 0);
+  match.start(67, 1, 2);
   for (BrowserGame *game : {&match.player, &match.opponent}) {
     while (game->active->moveTo(game->active->x(), game->active->y() + 1)) {}
     game->input(3);
@@ -209,7 +210,7 @@ void bazaarFreezesLanding() {
 void matchResumeTimers() {
   for (bool bazaar : {false, true}) {
     BrowserMatch match;
-    match.start(68, 1, 0);
+    match.start(68, 1, 2);
     for (int i = 0; i < 4; ++i) match.tick(100);
     const int y = match.player.active->y();
     if (bazaar) {
@@ -232,8 +233,8 @@ void matchResumeTimers() {
   // Measure the adapted AI's first command interval, then pause just before
   // that command. Resume must wait a full command interval again.
   BrowserMatch control, paused;
-  control.start(69, 1, 0);
-  paused.start(69, 1, 0);
+  control.start(69, 1, 2);
+  paused.start(69, 1, 2);
   const unsigned revision = control.opponent.motionRevision();
   int firstCommand = 0;
   do {

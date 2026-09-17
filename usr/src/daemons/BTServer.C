@@ -65,7 +65,7 @@ BTServer::BTServer(int nslaves, int port)
     goto memerr;
 
   if((pidfile_ =
-        new char [strlen(g_conf->datadir()) + strlen(BTMD_PIDFILE) + 1]) == 0)
+        new char [strlen(g_conf->datadir()) + strlen(BTMD_PIDFILE) + 2]) == 0)
     goto memerr;
 
   // Allocate 16 extra bytes so we can concatenate the daemon prindex

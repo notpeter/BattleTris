@@ -23,8 +23,7 @@ const baseURL = process.env.BASE_URL || 'http://127.0.0.1:8000/';
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
       await page.goto(baseURL);
-      await page.waitForFunction(() => document.querySelector('#status').textContent.includes('paused'));
-      await page.locator('#pause').tap();
+      await page.waitForFunction(() => document.querySelector('#status').textContent.includes('playing'));
       assert.match(await page.locator('#status').textContent(), /playing/);
       await page.locator('[data-command="0"]').tap();
       await page.locator('[data-command="2"]').tap();
@@ -35,7 +34,8 @@ const baseURL = process.env.BASE_URL || 'http://127.0.0.1:8000/';
       await page.waitForTimeout(300);
       assert.equal(await page.locator('#board').evaluate(canvas => canvas.toDataURL()), pixels);
       await page.locator('#toggle-recon').tap();
-      assert.match(await page.locator('#toggle-recon').textContent(), /Enable/);
+      assert.equal(await page.locator('#toggle-recon').getAttribute('aria-pressed'), 'false');
+      assert(await page.locator('#opponent-panel').isHidden());
       await page.evaluate(() => window.scrollTo(0, 0));
       const bounds = await page.locator('.play-controls').boundingBox();
       assert(bounds.y + bounds.height <= 844, 'Touch controls extend below viewport');
@@ -49,7 +49,7 @@ const baseURL = process.env.BASE_URL || 'http://127.0.0.1:8000/';
       await page.screenshot({ path: `.playwright-mcp/${name}-landscape.png` });
       await mobile.close();
       // Check missing script/WASM/image failures and recovery on real pages.
-      for (const pattern of ['**/app*.js', '**/*.wasm', '**/gimp*.png']) {
+      for (const pattern of ['**/app*.js', '**/ui*.js', '**/*.wasm', '**/gimp*.png']) {
         const broken = await browser.newContext();
         const failedPage = await broken.newPage();
         await failedPage.route(pattern, route => route.abort());
@@ -58,7 +58,7 @@ const baseURL = process.env.BASE_URL || 'http://127.0.0.1:8000/';
         assert(await failedPage.locator('#pause').isDisabled());
         await failedPage.unroute(pattern);
         await failedPage.locator('#retry-load').click();
-        await failedPage.waitForFunction(() => document.querySelector('#status').textContent.includes('paused'));
+        await failedPage.waitForFunction(() => document.querySelector('#status').textContent.includes('playing'));
         assert(await failedPage.locator('#load-error').isHidden());
         await broken.close();
       }

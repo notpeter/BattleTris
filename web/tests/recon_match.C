@@ -1,3 +1,4 @@
+#include "Drop.H"
 #include "Match.H"
 #include "Recon.H"
 #include "BTBox.H"
@@ -29,7 +30,7 @@ int slotFor(BrowserMatch &match, int token) {
   return -1;
 }
 void shop(BrowserMatch &match) {
-  match.start(404, 1, 0);
+  match.start(404, 1, 2);
   assert(match.reconEnabled() && match.toggleRecon());
   match.player.lines = 20;
   match.player.funds = 10000;
@@ -47,10 +48,10 @@ void queuedReportAndCache() {
   assert(!match.recon().known() && match.recon().remaining() == 40);
   assert(match.opponent.pendingWeapons() == 1);
   match.opponent.funds = 123;
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(!match.recon().known() && match.recon().remaining() == 40);
   assert(match.opponent.pendingWeapons() == 0);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.recon().known() && match.recon().token() == BT_CONDOR);
   assert(match.recon().remaining() == 40 && match.recon().funds() == 123);
   assert(!match.opponent.weapons.BTActive[BT_CONDOR]);
@@ -72,18 +73,18 @@ void queuedReportAndCache() {
     assert(report(match.recon()) == before && match.recon().funds() == 123);
     assert(match.recon().randomState() == random);
   }
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.recon().funds() == 456);
   assert(!match.recon(1).known());
 }
 void expiryAndQueuedOverlap() {
   BrowserMatch match;
-  match.start(501, 1, 0);
+  match.start(501, 1, 2);
   assert(match.toggleRecon());
   spy(match.opponent, BT_CONDOR, 1);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(!match.recon().known() && match.recon().remaining() == 1);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.recon().known() && match.recon().remaining() == 1);
   // Clearing the viewer's lines must not consume the target's spying duration.
   row(match.player);
@@ -91,14 +92,14 @@ void expiryAndQueuedOverlap() {
   assert(match.recon().remaining() == 1);
   match.opponent.board.clear();
   row(match.opponent);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.recon().remaining() == 0 && !match.recon().known());
   for (int cell : report(match.recon())) assert(cell == 0);
 
   spy(match.opponent, BT_AMES, 1);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(!match.recon().known() && match.recon().token() == BT_AMES);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.recon().known() && match.recon().token() == BT_AMES);
   match.opponent.board.clear();
   row(match.opponent);
@@ -106,17 +107,17 @@ void expiryAndQueuedOverlap() {
   spy(match.opponent, BT_CONDOR, 4);
   // Launched allowances extend the existing viewer before the next clear.
   // The active recipient can report immediately using the new viewer quality.
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.recon().known() && match.recon().token() == BT_CONDOR);
   assert(match.recon().remaining() == 7);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.recon().known() && match.recon().remaining() == 7);
   spy(match.opponent, BT_AMES, 2);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.recon().token() == BT_AMES && match.recon().remaining() == 9);
   assert(match.recon().known());
   match.opponent.board.clear();
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.recon().known());
 }
 void mirrorNullifiesAndBothViewers() {
@@ -138,16 +139,16 @@ void mirrorNullifiesAndBothViewers() {
   assert(match.toggleRecon());
   spy(match.player, BT_CONDOR, 3);
   match.player.funds = -50;
-  match.player.input(4);
+  finishDrop(match.player);
   assert(!match.recon(1).known() && match.recon(1).remaining() == 3);
-  match.player.input(4);
+  finishDrop(match.player);
   assert(match.recon(1).known() && match.recon(1).funds() == -50);
   assert(!match.recon(0).known());
   spy(match.opponent, BT_CONDOR, 4);
   match.opponent.funds = 60;
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(!match.recon().known() && match.recon().remaining() == 4);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.recon().known() && match.recon().funds() == 60);
   assert(match.recon(1).remaining() == 3 && match.recon().remaining() == 4);
   const auto firstSeed = match.recon().randomState();
@@ -166,31 +167,31 @@ void mirrorNullifiesAndBothViewers() {
 }
 void freeCondorAndToggle() {
   BrowserMatch match;
-  match.start(707, 1, 0);
+  match.start(707, 1, 2);
   assert(match.reconEnabled());
   assert(match.recon().token() == BT_CONDOR && match.recon().remaining() == 65535);
   assert(!match.recon().known());
   match.opponent.funds = 72;
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(!match.recon().known());
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.recon().known() && match.recon().funds() == 72);
   spy(match.opponent, BT_AMES, 20);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.reconEnabled() && match.recon().token() == BT_AMES);
   assert(match.recon().remaining() == 65555 && match.recon().known());
   match.opponent.board.clear();
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.recon().known());
   assert(match.toggleRecon() && !match.reconEnabled());
   assert(!match.recon().known() && match.recon().remaining() == 0);
   assert(match.toggleRecon() && match.reconEnabled());
   assert(match.recon().token() == BT_CONDOR && match.recon().remaining() == 65535);
   assert(!match.recon().known());
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(!match.recon().known());
   match.opponent.board.clear();
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.recon().known());
   match.start(708, 0, 0);
   assert(!match.reconEnabled() && !match.toggleRecon());
@@ -198,10 +199,10 @@ void freeCondorAndToggle() {
 }
 void reportsPrecedeQueuedMutations() {
   BrowserMatch match;
-  match.start(811, 1, 0);
+  match.start(811, 1, 2);
   assert(match.toggleRecon());
   spy(match.opponent, BT_CONDOR, 10);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(!match.recon().known());
   match.opponent.board.clear();
   match.opponent.board.fill(0, 20,
@@ -210,7 +211,7 @@ void reportsPrecedeQueuedMutations() {
   const int viewerFunds = match.player.funds;
   match.opponent.queueWeapon(BTWeapon(BT_FLIP_OUT));
   match.opponent.queueWeapon(BTWeapon(BT_KEATING));
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   // Ernie reports the placement before flushing received weapons. The cached
   // board and balance must therefore describe the state before both attacks.
   assert(match.recon().known() && match.recon().funds() == 123);
@@ -220,17 +221,17 @@ void reportsPrecedeQueuedMutations() {
   assert(match.opponent.board.cell(9, 20) == BT_RED);
   assert(match.opponent.funds == 0 && match.player.funds == viewerFunds + 123);
   assert(match.opponent.pendingWeapons() == 0);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.recon().funds() == 0);
   assert(match.recon().cell(0, 20) == 0);
   assert(match.recon().cell(9, 20) == BT_RED);
 }
 void cancelPendingFreeCondor() {
   BrowserMatch match;
-  match.start(812, 1, 0);
+  match.start(812, 1, 2);
   assert(match.toggleRecon() && !match.reconEnabled());
-  match.opponent.input(4);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
+  finishDrop(match.opponent);
   assert(!match.recon().known() && match.recon().remaining() == 0);
   assert(match.toggleRecon() && match.reconEnabled());
   // Cancel and replace an unacknowledged request. Only the new request may
@@ -238,14 +239,14 @@ void cancelPendingFreeCondor() {
   assert(match.toggleRecon() && !match.reconEnabled());
   assert(match.toggleRecon() && match.reconEnabled());
   match.opponent.board.clear();
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(!match.recon().known() && match.recon().remaining() == 65535);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.recon().known() && match.recon().remaining() == 65535);
 }
 void gameplayRandomIsolation() {
   BrowserMatch observed, control;
-  observed.start(1001, 1, 0); control.start(1001, 1, 0);
+  observed.start(1001, 1, 2); control.start(1001, 1, 2);
   assert(observed.toggleRecon() && control.toggleRecon());
   spy(observed.opponent, BT_AMES, 100);
   spy(observed.player, BT_ACE, 100);
@@ -257,6 +258,8 @@ void gameplayRandomIsolation() {
       observed.player.input(command); control.player.input(command);
       observed.opponent.input(command); control.opponent.input(command);
     }
+    finishDrop(observed.player); finishDrop(control.player);
+    finishDrop(observed.opponent); finishDrop(control.opponent);
     assert(observed.player.board.random.state() == control.player.board.random.state());
     assert(observed.opponent.board.random.state() == control.opponent.board.random.state());
     for (int y = 0; y < BT_BOARD_HGT; ++y)
@@ -277,9 +280,9 @@ void launchAllowanceAndTerminalCleanup() {
   assert(match.launch(slot));
   // Lines cleared before activation already consume the viewer's allowance.
   row(match.opponent);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.recon().remaining() == 39 && !match.recon().known());
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.recon().known());
   const auto cached = report(match.recon());
   const int cachedFunds = match.recon().funds();
@@ -312,12 +315,12 @@ void launchAllowanceAndTerminalCleanup() {
   assert(match.toggleRecon());
   spy(match.opponent, BT_CONDOR, 1);
   row(match.opponent);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.recon().remaining() == 0 && !match.recon().known());
   spy(match.opponent, BT_CONDOR, 2);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.recon().remaining() == 2 && !match.recon().known());
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.recon().known());
 }
 } // namespace

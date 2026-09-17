@@ -6,18 +6,17 @@
     const element = typeof id === 'string' ? $(id) : id;
     if (element.textContent !== String(value)) element.textContent = value;
   };
-  const width = 10, height = 28, size = 30;
-  const colors = ['#080b0f', '#f3ecdb', '#f4d458', '#e65c59', '#628aee', '#e89949', '#65c17a', '#65d2d9', '#ba82de', '#aaa'];
   const gimp = new Image();
   gimp.src = 'assets/gimp.png';
   let socket, generation = 0, reconnectTimer, attempts = 0, seq = 0;
   let room = null, token = null, snapshot = null, invitation = '', previousPhase = null;
   let terminalError = false, seatRetries = 0, catalog = [];
   const controls = [...document.querySelectorAll('[data-command]')];
-  const weapons = new Map(), cards = new Map();
+  const weapons = new Map();
+  let store;
   const slots = Array.from({ length: 10 }, (_, slot) => {
     const row = document.createElement('div'); row.className = 'slot';
-    const label = document.createElement('div');
+    const label = document.createElement('button');
     const launch = document.createElement('button'); launch.textContent = 'Launch ' + ((slot + 1) % 10);
     launch.addEventListener('click', () => { command('launch', { slot }); focusBoard(); });
     const refund = document.createElement('button'); refund.textContent = 'Undo purchase';
@@ -36,7 +35,7 @@
   function disableControls() {
     controls.forEach(button => { button.disabled = true; });
     for (const { launch, refund } of slots) { launch.disabled = refund.disabled = true; }
-    for (const { buy } of cards.values()) buy.disabled = true;
+    if (store) { for (const row of store.rows) row.disabled = true; store.refresh(); }
     for (const id of ['pause', 'ready', 'done-shopping', 'surrender']) $(id).disabled = true;
   }
   function connect(request) {
@@ -66,9 +65,9 @@
         room = data.room; token = data.token;
         storageSet('battletris-seat:' + room, token);
         // Seat credentials stay in this tab's storage, never in invitation URLs.
-        history.replaceState(null, '', '#room=' + encodeURIComponent(room));
+        history.replaceState(null, '', location.pathname + '?room=' + encodeURIComponent(room));
         if (data.invite) {
-          invitation = location.origin + location.pathname + '#room=' + encodeURIComponent(room) + '&invite=' + encodeURIComponent(data.invite);
+          invitation = location.origin + location.pathname + '?room=' + encodeURIComponent(room) + '&invite=' + encodeURIComponent(data.invite);
           storageSet('battletris-invite:' + room, invitation);
         } else invitation = storageGet('battletris-invite:' + room) || '';
         text('invite-link', invitation);
@@ -122,7 +121,7 @@
   }
   function join(value) {
     try {
-      const url = new URL(value, location.href), params = new URLSearchParams(url.hash.slice(1));
+      const url = new URL(value, location.href), params = url.searchParams.has('room') ? url.searchParams : new URLSearchParams(url.hash.slice(1));
       const inviteRoom = params.get('room'), secret = params.get('invite');
       if (!inviteRoom || !secret) throw new Error('Paste a complete invitation link with its room and invite code.');
       snapshot = null; room = token = null; seq = 0;
@@ -141,7 +140,7 @@
     $('new-room').hidden = phase !== 'ended';
     $('invite-note').hidden = phase !== 'waiting';
     $('invite-link').hidden = $('copy-invite').hidden = phase !== 'waiting' || !invitation;
-    const descriptions = { waiting: 'Waiting for both players to be ready.', playing: 'Match in progress.', paused: 'Match paused. Either player can resume.', bazaar: 'Weapons bazaar - waiting for both players to finish.', reconnecting: 'Match stopped while a player reconnects.', ended: state.result === 'win' ? 'You win!' : state.result === 'loss' ? 'You lose.' : 'Match ended in a draw.' };
+    const descriptions = { waiting: 'Waiting for both players to be ready.', playing: 'Match in progress.', paused: 'Match paused. Either player can resume.', bazaar: 'Weapons bazaar - waiting for both players to finish.', reconnecting: 'Match stopped while a player reconnects.', ended: state.result === 'win' ? 'You win!' : state.result === 'loss' ? 'You suck!' : 'Match ended in a draw.' };
     text('status', descriptions[phase] || phase);
     text('combat-message', state.message || '');
     $('game-layout').hidden = !own;
@@ -153,19 +152,8 @@
     if (!own) { previousPhase = phase; return; }
     for (const weapon of state.catalog || []) {
       weapons.set(weapon.token, weapon);
-      if (!cards.has(weapon.token)) {
-        const card = document.createElement('div'); card.className = 'weapon';
-        const details = document.createElement('details'), summary = document.createElement('summary');
-        summary.textContent = weapon.name;
-        const description = document.createElement('p'); description.className = 'note'; description.textContent = weapon.description;
-        details.append(summary, description);
-        const price = document.createElement('p'), buy = document.createElement('button');
-        buy.textContent = 'Buy ' + weapon.name;
-        buy.addEventListener('click', () => command('buy', { token: weapon.token }));
-        card.append(details, price, buy); $('shop').append(card);
-        cards.set(weapon.token, { price, buy });
-      }
     }
+    if (!store && state.catalog?.length) store = BattleTrisUI.shop(state.catalog, token => command('buy', { token }));
     const name = token => weapons.get(token)?.name || 'Weapon ' + token;
     text('score', own.score); text('lines', own.lines); text('funds', own.funds); text('shop-funds', own.funds);
     text('op-score', state.opponent?.score ?? 0); text('op-lines', state.opponent?.lines ?? 0);
@@ -175,28 +163,36 @@
     if (recon?.known && recon.cells) drawBoard($('opponent-board'), recon.cells);
     text('op-funds', recon?.known && recon.funds !== null ? '$' + recon.funds : 'Unknown');
     text('recon-status', recon?.remaining > 0 ? name(recon.token) + ': ' + (recon.known ? 'settled-board report' : 'waiting for a report') + '. ' + recon.remaining + ' opponent lines remaining.' : 'No reconnaissance. Buy a spy to reveal the opponent\'s board and funds.');
-    text('player-effects', 'Incoming: ' + own.pending + '. Active: ' + ((own.effects || []).map(effect => name(effect.token) + ': ' + effect.remaining + ' lines').join('; ') || 'none'));
-    text('bazaar-countdown', 'Lines until bazaar: ' + state.linesUntilBazaar);
+    text('player-effects', own.pending || own.effects?.length ? 'Incoming: ' + own.pending + '. Active: ' + ((own.effects || []).map(effect => name(effect.token) + ': ' + effect.remaining + ' lines').join('; ') || 'none') : '');
+    text('bazaar-countdown', state.linesUntilBazaar);
     controls.forEach(button => { button.disabled = !playing; });
     $('pause').disabled = !playing && !shopping && phase !== 'paused';
-    text('pause', phase === 'paused' ? 'Resume' : state.pauseRequestedBy === state.side ? 'Pause requested' : state.pauseRequestedBy !== null && state.pauseRequestedBy !== undefined ? 'Accept pause' : 'Request pause');
+    text('pause', phase === 'paused' ? 'Resume' : 'Pause');
     $('done-shopping').disabled = !shopping || own.bazaarReady;
-    text('done-shopping', own.bazaarReady ? 'Done - waiting for opponent' : 'Done shopping');
+    text('done-shopping', own.bazaarReady ? 'Waiting...' : 'DONE');
     const held = new Map(); let empty = false;
     for (let slot = 0; slot < 10; ++slot) {
       const item = own.inventory[slot], owned = item && item.token >= 0 && item.quantity > 0;
       if (owned) held.set(item.token, item.quantity); else empty = true;
       const row = slots[slot];
-      text(row.label, ((slot + 1) % 10) + '. ' + (owned ? name(item.token) + ' x' + item.quantity : 'Empty'));
+      text(row.label, (shopping ? '' : ((slot + 1) % 10) + '. ') + (owned ? name(item.token) + (item.quantity > 1 ? ' x' + item.quantity : '') : '< Empty >'));
+      row.label.hidden = !shopping;
+      row.label.disabled = !owned;
+      text(row.launch, row.label.textContent);
+      row.launch.setAttribute('aria-label', 'Launch slot ' + ((slot + 1) % 10) + ': ' + row.label.textContent);
       row.launch.hidden = shopping; row.launch.disabled = !playing || !owned;
-      row.refund.hidden = !shopping; row.refund.disabled = !shopping || own.bazaarReady || !(item?.refundable > 0);
+      row.refund.hidden = !shopping || !owned; row.refund.disabled = !shopping || own.bazaarReady || !(item?.refundable > 0);
       text(row.refund, 'Undo purchase (' + (item?.refundable || 0) + ')');
       row.refund.setAttribute('aria-label', 'Undo purchase from arsenal slot ' + ((slot + 1) % 10));
     }
-    for (const weapon of state.catalog || []) {
-      const card = cards.get(weapon.token);
-      text(card.price, '$' + weapon.price + ' / ' + (weapon.duration ? weapon.duration + ' affected-player lines' : 'Instant effect'));
-      card.buy.disabled = !shopping || own.bazaarReady || weapon.price > own.funds || (held.get(weapon.token) || 0) >= 32767 || (!empty && !held.has(weapon.token));
+    if (store) {
+      for (const row of store.rows) {
+        row.weapon = weapons.get(row.weapon.token);
+        const weapon = row.weapon;
+        row.disabled = !shopping || own.bazaarReady || weapon.price > own.funds ||
+          (held.get(weapon.token) || 0) >= 32767 || (!empty && !held.has(weapon.token));
+      }
+      store.refresh();
     }
     if (phase !== previousPhase) {
       $(shopping ? 'shop-inventory' : 'combat').append($('inventory-panel'));
@@ -205,49 +201,7 @@
     }
     previousPhase = phase;
   }
-    function drawBoard(target, cells) {
-      const ctx = target.getContext("2d");
-      ctx.fillStyle = colors[0];
-      ctx.fillRect(0, 0, target.width, target.height);
-      for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
-        const id = cells[y * width + x];
-        if (id <= 0) continue;
-        ctx.fillStyle = colors[id] || colors[1];
-        ctx.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-        ctx.strokeStyle = "#ffffff66";
-        ctx.strokeRect(x * size + 3, y * size + 3, size - 6, size - 6);
-        ctx.fillStyle = "#191d22";
-        if (id >= 24 && id <= 29) {
-          const pips = id - 23;
-          const positions = [];
-          if (pips % 2) positions.push([.5, .5]);
-          if (pips >= 2) positions.push([.25, .25], [.75, .75]);
-          if (pips >= 4) positions.push([.75, .25], [.25, .75]);
-          if (pips === 6) positions.push([.25, .5], [.75, .5]);
-          for (const [px, py] of positions) {
-            ctx.beginPath(); ctx.arc((x + px) * size, (y + py) * size, 2, 0, Math.PI * 2); ctx.fill();
-          }
-        } else if (id === 20) {
-          // Fixed Bottleneck walls are distinct from ordinary removable cells.
-          ctx.fillStyle = "#536778";
-          ctx.fillRect(x * size + 2, y * size + 2, size - 4, size - 4);
-          ctx.fillStyle = "#bac9d2";
-          ctx.fillRect(x * size + 4, y * size + 4, 2, 2);
-          ctx.fillRect((x + 1) * size - 6, (y + 1) * size - 6, 2, 2);
-        } else if (id === 23 && gimp.complete && gimp.naturalWidth) {
-          ctx.imageSmoothingEnabled = false;
-          ctx.drawImage(gimp, x * size + 1, y * size + 1, size - 2, size - 2);
-        } else if (id === 21 || id === 22) {
-          ctx.fillRect((x + .3) * size, (y + .3) * size, 3, 3);
-          ctx.fillRect((x + .65) * size, (y + .3) * size, 3, 3);
-          ctx.strokeStyle = "#191d22";
-          ctx.beginPath();
-          ctx.arc((x + .5) * size, (y + (id === 21 ? .5 : .8)) * size,
-            size * .23, 0, Math.PI, id === 22);
-          ctx.stroke();
-        }
-      }
-    }
+  function drawBoard(target, cells) { BattleTrisUI.drawBoard(target, cells, gimp); }
   $('create-room').addEventListener('click', () => {
     snapshot = null; room = token = null; seq = 0;
     connect({ v: 1, type: 'create' });
@@ -286,7 +240,7 @@
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && ['playing', 'bazaar'].includes(snapshot?.phase)) command('pause');
   });
-  const params = new URLSearchParams(location.hash.slice(1));
+  const params = new URLSearchParams(location.search || location.hash.slice(1));
   if (params.get('room')) {
     room = params.get('room'); token = storageGet('battletris-seat:' + room);
     if (token) connect({ v: 1, type: 'reconnect', room, token });
@@ -294,3 +248,8 @@
     else text('connection-error', 'This tab has no seat for that room. Open the original invitation to join.');
   }
 })();
+
+document.addEventListener('battletris:about', () => {
+  const pause = document.getElementById('pause');
+  if (!pause.disabled && pause.textContent === 'Pause') pause.click();
+});

@@ -67,7 +67,7 @@ BASE_URL=http://127.0.0.1:8001/dist/ NODE_PATH=/tmp/battletris-ui-checks/node_mo
 
 Native and WASM tests cover all weapons and targeted interactions, including
 recon activation/expiry, terminal cleanup, timer restart boundaries, and bazaar
-freezing. Replay checks compare 24 seeded traces and 720 cumulative checkpoints.
+freezing. Replay checks compare 48 seeded Ernie/human traces and 1440 cumulative checkpoints.
 Browser checks exercise keyboard and touch controls, focus loss, shopping with
 earned funds, refunds/launches, complete loss/restart, responsive layouts, and
 recovery from missing scripts, WASM, and artwork. Screenshots are written to
@@ -92,6 +92,7 @@ are adapted controls. These are release scope decisions, not promises of exact
 native gameplay or AI strategy parity. See [PORTING.md](../PORTING.md) for detail.
 
 The native Motif game builds and passes its Ernie smoke check in Debian 12 ARM64
-with GCC 12.2 and Motif 2.3.8. The macOS Motif target and exhaustive native GUI
-interaction comparisons remain unverified. Core sanitizer/replay checks compare
+with GCC 12.2 and Motif 2.3.8. The macOS ARM64 client also builds with Apple Clang and Homebrew OpenMotif
+and passes startup, challenge, Ernie play, and pause checks under XQuartz Xvfb. Exhaustive native GUI
+interaction comparisons remain outside this check. Core sanitizer/replay checks compare
 the portable build to WASM, not the entire original application.

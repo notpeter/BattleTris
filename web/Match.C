@@ -82,7 +82,7 @@ void BrowserMatch::start(unsigned seed, int mode, int level) {
   versus_ = mode == 1 || humans_;
   ready_[0] = ready_[1] = false;
   opponent.setComputer(!humans_);
-  level_ = std::max(0, std::min(level, 2));
+  level_ = std::max(0, std::min(level, 14));
   result_ = 0;
   paused_ = bazaar_ = false;
   nextBazaar_ = 20;
@@ -167,7 +167,7 @@ void BrowserMatch::stepComputer(double milliseconds) {
     // moves through that interval instead of teleporting to the landing cell.
     if (newPiece) {
       aiElapsed_ = 0;
-      static const double delays[] = {2000, 750, 300};
+      static const double delays[] = {4000, 3000, 2000, 1500, 1250, 1000, 750, 550, 400, 350, 300, 225, 100, 10, 0};
       aiInterval_ = delays[level_] * opponent.gravityInterval() / BT_DROP_TIME / path_.size();
     }
   };

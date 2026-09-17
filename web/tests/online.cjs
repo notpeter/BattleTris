@@ -8,7 +8,7 @@ for (const name of names) assert(['chromium', 'firefox', 'webkit'].includes(name
 const { createService } = require('../../server/index.cjs');
 
 async function check(name) {
-  const service = await createService({ graceMs: 3000, pauseMs: 5000,
+  const service = await createService({ graceMs: 3000,
     seedFactory: () => 42 });
   const address = await service.listen(0, '127.0.0.1');
   const url = `http://127.0.0.1:${address.port}/online.html`;
@@ -23,6 +23,8 @@ async function check(name) {
     await host.locator('#create-room').click();
     await host.locator('#invite-link').waitFor({ state: 'visible' });
     const invitation = await host.locator('#invite-link').textContent();
+    assert.equal(new URL(invitation.trim()).hash, '');
+    assert(new URL(invitation.trim()).searchParams.get('invite'));
     await guest.goto(invitation.trim());
     await guest.locator('#ready').waitFor({ state: 'visible' });
     await host.locator('#ready').click();
@@ -39,8 +41,6 @@ async function check(name) {
     await guest.locator('[data-command="4"]').tap();
     await guest.waitForFunction(() => Number(document.querySelector('#score').textContent) > 0);
     await host.locator('#pause').click();
-    await guest.waitForFunction(() => /accept/i.test(document.querySelector('#pause').textContent));
-    await guest.locator('#pause').click();
     for (const page of [host, guest]) {
       await page.waitForFunction(() => /paused/i.test(document.querySelector('#status').textContent));
     }
@@ -57,17 +57,19 @@ async function check(name) {
         'Online page overflows horizontally');
       await host.screenshot({ path: `.playwright-mcp/online-${name}-${width}x${height}.png` });
     }
-    await host.locator('#pause').click();
+    await guest.locator('#pause').click();
     await host.waitForFunction(() => !document.querySelector('[data-command="4"]').disabled);
     const score = await host.locator('#score').textContent();
     await host.reload();
+    await host.waitForFunction(() => !document.querySelector('#pause').disabled);
+    if (await host.locator('#pause').textContent() === 'Resume') await host.locator('#pause').click();
     await host.waitForFunction(() => !document.querySelector('[data-command="4"]').disabled);
     assert.equal(await host.locator('#score').textContent(), score, 'Reload reconnects to the same seat');
     guest.once('dialog', dialog => dialog.accept());
     await guest.locator('#surrender').click();
     for (const page of [host, guest]) await page.locator('#new-room').waitFor({ state: 'visible' });
     assert.match(await host.locator('#status').textContent(), /win|won/i);
-    assert.match(await guest.locator('#status').textContent(), /lose|lost/i);
+    assert.match(await guest.locator('#status').textContent(), /You suck!/);
     // The multiplayer service also hosts offline play. Its CSP must permit
     // the offline startup/error guard and WASM compilation.
     const offline = await contexts[0].newPage();
@@ -79,7 +81,7 @@ async function check(name) {
     await offline.locator('#load-error').waitFor({ state: 'visible' });
     await offline.close();
     assert.deepEqual(errors, []);
-    console.log(name + ' online browser: invitations, two human inputs, private recon, mutual pause, reload reconnect, and surrender passed');
+    console.log(name + ' online browser: invitations, two human inputs, private recon, either-player pause, reload reconnect, and surrender passed');
     await Promise.all(contexts.map(context => context.close()));
   } finally {
     await browser?.close();

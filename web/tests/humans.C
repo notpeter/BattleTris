@@ -1,3 +1,4 @@
+#include "Drop.H"
 #include "Match.H"
 #include "BTBox.H"
 #include <cassert>
@@ -17,30 +18,58 @@ void bazaar(BrowserMatch &match) {
   assert(match.status() == 5);
   match.player.funds = match.opponent.funds = 1000;
 }
+void independentRandomStreams() {
+  BrowserMatch forward, reverse;
+  forward.start(0xdeadbeef, 2, 0);
+  reverse.start(0xdeadbeef, 2, 0);
+  for (int turn = 0; turn < 3; ++turn) {
+    for (BrowserMatch *match : {&forward, &reverse}) {
+      for (BrowserGame *game : {&match->player, &match->opponent}) {
+        game->queueWeapon(catalogWeapon(BT_RISE_UP));
+        game->queueWeapon(catalogWeapon(BT_PIECE_IT));
+        game->queueWeapon(catalogWeapon(BT_MISSING));
+      }
+      // Reversing socket arrival order must not share either player's RNG.
+      for (int i = 0; i < 2; ++i) {
+        const int side = match == &forward ? i : 1 - i;
+        match->sideInput(side, side);
+        assert(match->sideInput(side, 4));
+      }
+    }
+    for (int side = 0; side < 2; ++side) {
+      BrowserGame &a = side ? forward.opponent : forward.player;
+      BrowserGame &b = side ? reverse.opponent : reverse.player;
+      assert(a.board.random.state() == b.board.random.state());
+      assert(a.score == b.score && a.funds == b.funds && a.lines == b.lines);
+      for (int y = 0; y < BT_BOARD_HGT; ++y)
+        for (int x = 0; x < BT_BOARD_WTH; ++x) assert(a.cell(x, y) == b.cell(x, y));
+    }
+  }
+}
 void gravityAndInputs() {
   BrowserMatch match;
   match.start(42, 2, 0);
   assert(match.mode() == 2 && !match.reconEnabled() && !match.toggleRecon());
   assert(!match.recon(0).known() && !match.recon(1).known());
-  assert(!match.sideInput(-1, 4) && !match.sideInput(2, 4));
+  assert(!finishDrop(match, -1) && !finishDrop(match, 2));
   assert(!match.sideInput(0, -1) && !match.sideInput(1, 5));
   int y[] = {match.player.active->y(), match.opponent.active->y()};
   for (int i = 0; i < 7; ++i) match.tick(100);
   assert(match.player.active->y() > y[0] && match.opponent.active->y() > y[1]);
   assert(match.player.score == 0 && match.opponent.score == 0);
   const int award = BT_BOARD_HGT - match.opponent.active->y();
-  assert(match.sideInput(1, 4) && match.opponent.score == award);
+  assert(finishDrop(match, 1) && match.opponent.score == award);
   assert(match.player.score == 0 && !match.recon(0).known());
   match.tick(90);
   assert(match.setPaused(true));
   const double elapsed = match.opponent.elapsed;
   match.tick(100);
-  assert(!match.sideInput(0, 4) && match.opponent.elapsed == elapsed);
+  assert(!finishDrop(match, 0) && match.opponent.elapsed == elapsed);
   assert(match.setPaused(false) && match.opponent.elapsed == 0 && match.player.elapsed == 0);
   match.reset(42);
   assert(match.mode() == 2 && !match.reconEnabled());
-  match.start(42, 1, 0);
-  assert(!match.sideInput(1, 4) && !match.sideSurrender(0));
+  match.start(42, 1, 2);
+  assert(!finishDrop(match, 1) && !match.sideSurrender(0));
   assert(match.reconEnabled());
 }
 void shoppingAndRecon() {
@@ -56,7 +85,7 @@ void shoppingAndRecon() {
     assert(match.sideRefund(side, 0));
     assert((side ? match.opponent : match.player).funds == 1000);
     assert(match.sideBuy(side, BT_CONDOR));
-    assert(!match.sideLaunch(side, 0) && !match.sideInput(side, 4));
+    assert(!match.sideLaunch(side, 0) && !finishDrop(match, side));
   }
   assert(match.sideReady(0) && match.ready(0) && !match.ready(1));
   assert(!match.sideReady(0) && !match.sideBuy(0, BT_FLIP_OUT) && !match.sideRefund(0, 0));
@@ -66,18 +95,18 @@ void shoppingAndRecon() {
   assert(!match.ready(0) && !match.ready(1));
   assert(match.sideLaunch(0, 0) && match.opponent.pendingWeapons() == 1);
   assert(!match.recon(0).known() && !match.recon(1).known());
-  assert(match.sideInput(1, 4)); // Flush spy, no report until next placement.
+  assert(finishDrop(match, 1)); // Flush spy, no report until next placement.
   assert(!match.recon(0).known());
-  assert(match.sideInput(1, 4) && match.recon(0).known());
+  assert(finishDrop(match, 1) && match.recon(0).known());
   assert(match.recon(0).funds() == match.opponent.funds);
   assert(!match.recon(1).known());
   assert(match.sideLaunch(1, 0) && match.player.pendingWeapons() == 1);
-  assert(match.sideInput(0, 4) && !match.recon(1).known());
-  assert(match.sideInput(0, 4) && match.recon(1).known());
+  assert(finishDrop(match, 0) && !match.recon(1).known());
+  assert(finishDrop(match, 0) && match.recon(1).known());
   assert(match.sideSurrender(1) && match.status() == 3);
   assert(!match.recon(0).known() && !match.recon(1).known());
   assert(!match.player.active && !match.opponent.active);
-  assert(!match.sideInput(0, 4) && !match.sideLaunch(0, 0) && !match.sideReady(1));
+  assert(!finishDrop(match, 0) && !match.sideLaunch(0, 0) && !match.sideReady(1));
   assert(!match.sideSurrender(0) && !match.setPaused(false));
 }
 void attacksAndPause() {
@@ -91,7 +120,7 @@ void attacksAndPause() {
   assert(match.sideReady(1) && match.sideReady(0));
   for (int side = 0; side < 2; ++side) assert(match.sideLaunch(side, 0));
   assert(match.player.pendingWeapons() == 1 && match.opponent.pendingWeapons() == 1);
-  assert(match.sideInput(0, 4) && match.sideInput(1, 4));
+  assert(finishDrop(match, 0) && finishDrop(match, 1));
   assert(match.player.weapons.BTActive[BT_CARTER] && match.opponent.weapons.BTActive[BT_CARTER]);
   for (int side = 0; side < 2; ++side)
     assert(match.price(BT_FLIP_OUT, side) == 2 * catalogWeapon(BT_FLIP_OUT)->price());
@@ -100,11 +129,11 @@ void attacksAndPause() {
   assert(match.sideBuy(0, BT_MIRROR) && match.sideBuy(1, BT_CARTER));
   assert(match.sideReady(0) && match.sideReady(1));
   assert(match.sideLaunch(0, 0));
-  assert(match.sideInput(1, 4));
+  assert(finishDrop(match, 1));
   assert(match.opponent.weapons.BTActive[BT_MIRROR]);
   assert(match.sideLaunch(1, 0));
   assert(match.player.pendingWeapons() == 0 && match.opponent.pendingWeapons() == 1);
-  assert(match.sideInput(1, 4));
+  assert(finishDrop(match, 1));
   assert(match.opponent.weapons.BTActive[BT_CARTER]);
 }
 void endings() {
@@ -131,4 +160,4 @@ void endings() {
   assert(match.status() == 4 && !match.player.active && !match.opponent.active);
 }
 }
-void humanRules() { gravityAndInputs(); shoppingAndRecon(); attacksAndPause(); endings(); }
+void humanRules() { independentRandomStreams(); gravityAndInputs(); shoppingAndRecon(); attacksAndPause(); endings(); }

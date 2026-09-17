@@ -4,113 +4,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BattleTris - private online match</title>
 <link rel="icon" href="data:,">
-<style>
-  * { box-sizing: border-box; }
-  [hidden] { display: none !important; }
-  body { margin: 0; background: #191d22; color: #eee; font: 16px monospace; }
-  main { max-width: 980px; margin: auto; padding: 24px; }
-  h1 { color: #ffc65a; margin: 0 0 8px; }
-  h2 { font-size: 18px; margin: 0 0 8px; }
-  p { line-height: 1.5; }
-  .game { display: grid; grid-template-columns: minmax(180px, 280px) minmax(180px, 280px) minmax(0, 1fr); gap: 20px; align-items: start; }
-  .game.solo { grid-template-columns: minmax(180px, 280px) minmax(0, 1fr); }
-  canvas { display: block; width: 100%; height: auto; background: #080b0f;
-    border: 4px ridge #aaa; touch-action: none; }
-  .player canvas, .opponent canvas {
-    width: min(100%, max(100px, calc((100svh - 340px) * .357142857)));
-    margin: auto;
-  }
-  button, select { font: inherit; padding: 10px; border: 3px outset #ccc; color: #111;
-    background: #ccc; }
-  button { cursor: pointer; touch-action: manipulation; }
-  button:active { border-style: inset; }
-  button:focus-visible, canvas:focus-visible, select:focus-visible, summary:focus-visible, #bazaar:focus-visible { outline: 3px solid #ffc65a; }
-  button:disabled, select:disabled { opacity: .5; cursor: default; }
-  label { display: block; margin-top: 12px; }
-  select { width: 100%; margin-top: 6px; }
-  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
-  #status { color: #ffc65a; margin-top: 0; }
-  .stats { font-size: 14px; margin: 0 0 10px; }
-  .note { color: #bac1cb; font-size: 13px; }
-  #bazaar { border: 3px ridge #aaa; background: #242b34; padding: 18px; margin-bottom: 24px; }
-  .shop { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 10px; }
-  .weapon { border: 1px solid #647080; padding: 12px; }
-  .weapon summary { cursor: pointer; font-weight: bold; line-height: 1.4; }
-  .weapon p { margin: 8px 0; }
-  .weapon button { width: 100%; }
-  .arsenal { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .slot { min-width: 0; overflow-wrap: anywhere; }
-  #shop-inventory .arsenal { grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); margin-bottom: 18px; }
-  .slot { border-top: 1px solid #526070; padding-top: 6px; font-size: 13px; }
-  .slot button { font-size: 13px; padding: 7px; margin: 5px 4px 5px 0; }
-  .effects { min-height: 36px; overflow-wrap: anywhere; }
-  #combat-message { min-height: 40px; }
-  .game > *, .weapon, aside { min-width: 0; }
-  .subtitle { margin: 0 0 8px; font-size: 14px; }
-  #status { margin: 0 0 16px; font-size: 14px; }
-  .play-controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 10px 0; }
-  .play-controls button { min-height: 44px; padding: 8px 3px; }
-  .settings, .instructions { margin: 0 0 16px; border: 1px solid #526070; padding: 10px; }
-  summary { cursor: pointer; line-height: 1.5; }
-  .effects { margin: 8px 0; }
-  #combat-message:empty { display: none; }
-  @media (max-width: 800px) {
-    .game, .game.solo { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-    aside { grid-column: 1 / -1; }
-    .game.solo .player { grid-column: 1 / -1; max-width: 320px; margin: auto; width: 100%; }
-    canvas { max-width: 280px; margin: auto; }
-    .play-controls { max-width: 320px; margin-left: auto; margin-right: auto; }
-  }
-  @media (max-width: 520px) {
-    main { padding: 12px; }
-    h1 { font-size: 26px; margin-bottom: 4px; }
-    .game, .game.solo { display: flex; flex-direction: column; gap: 16px; }
-    .player { order: 0; }
-    aside { order: 1; width: 100%; }
-    .opponent { order: 2; }
-    .board-panel, .game.solo .player { width: 100%; max-width: none; }
-    .player h2 { display: inline; }
-    .player .stats { display: inline-block; margin-left: 12px; vertical-align: middle; }
-    .opponent canvas { width: min(100%, 180px); }
-    .shop { grid-template-columns: minmax(0, 1fr); }
-    #bazaar { padding: 12px; }
-  }
-  @media (max-height: 520px) and (min-width: 521px) {
-    main { padding: 8px 12px; }
-    h1 { font-size: 22px; margin-bottom: 4px; }
-    .subtitle { display: none; }
-    #status { margin-bottom: 8px; }
-    .game, .game.solo { grid-template-columns: minmax(280px, 1fr) minmax(120px, 1fr); }
-    .player, .game.solo .player { display: grid; grid-template-columns: minmax(60px, 110px) minmax(160px, 1fr); gap: 8px; max-width: none; grid-column: auto; }
-    .player h2, .player .stats { grid-column: 1 / -1; margin: 0; }
-    .player .stats br { display: none; }
-    .player #score::after { content: ' / '; }
-    .player canvas { grid-column: 1; width: min(100%, calc((100svh - 170px) * .357142857)); }
-    .play-controls { grid-column: 2; grid-template-columns: repeat(2, minmax(0, 1fr)); align-self: center; margin: 0; width: 100%; }
-    .player .effects { grid-column: 1 / -1; }
-    .opponent canvas { width: min(100%, calc((100svh - 210px) * .357142857)); }
-  }
-</style>
-<style>
-input { font: inherit; padding: 10px; min-height: 44px; width: 100%; }
-a { color: #ffc65a; }
-#lobby, #room-controls { margin-bottom: 16px; }
-#invite-link { overflow-wrap: anywhere; }
-#connection-error { color: #ffb5a7; }
-button { min-height: 44px; }
-</style>
+<link rel="stylesheet" href="style.css">
 <main>
-<h1>BattleTris</h1>
-<p class="subtitle">Private online match / <a href="index.html">Play offline</a></p>
+<header class="site-header"><a class="brand" href="index.html">Battle<span>Tris</span></a>
+<nav aria-label="Main navigation"><a href="index.html">Offline</a><a href="online.html" aria-current="page">Multiplayer</a><a href="guide.html" target="_blank" rel="noopener" title="Opens in a new tab">How to play</a></nav></header>
+<p class="subtitle">Multiplayer / A private match with a friend</p>
 <p id="status" role="status">Create a private match or open an invitation.</p>
 <p id="connection-error" role="alert"></p>
 <noscript>This game needs JavaScript enabled.</noscript>
 <section id="lobby" aria-label="Join an online match">
-<p class="note">Online matches require a running BattleTris room server. Opening this page on a static host cannot start a match. Setup instructions: MULTIPLAYER.md in the source distribution.</p>
-<button id="create-room">Create private match</button>
-<label for="join-link">Invitation link</label>
-<input id="join-link" type="text" autocomplete="off" placeholder="Paste an invitation link">
-<div class="controls"><button id="join-room">Join match</button></div>
+<div class="lobby-intro">
+<img class="lobby-art" src="assets/startup.png" width="640" height="441" alt="Original BattleTris artwork">
+
+</div>
+<div class="lobby-actions">
+<section class="lobby-card"><h2>Start a match</h2><p>You get an invitation link. The match starts when you're both ready.</p><button id="create-room" class="primary">Create private match</button></section>
+<section class="lobby-card"><h2>Have an invitation?</h2><label for="join-link">Invitation link</label>
+<input id="join-link" type="url" autocomplete="off" placeholder="Paste your friend's link">
+<div class="controls"><button id="join-room">Join match</button></div></section>
+<p class="note">Just want to play? <a href="index.html">Play Ernie offline</a>, no invitation needed.</p>
+</div>
 </section>
 <section id="room-controls" hidden aria-label="Match lobby">
 <p id="room-status"></p>
@@ -119,37 +32,46 @@ button { min-height: 44px; }
 <p class="note" id="invite-note">Share invitations privately. Anyone with the link can take the other seat. Keep this tab open while waiting.</p>
 </section>
 <section id="bazaar" hidden tabindex="-1" aria-labelledby="bazaar-heading">
-<h2 id="bazaar-heading">Weapons bazaar</h2>
-<p>Both boards are stopped. Play resumes when both players finish shopping.</p>
-<p>Available funds: $<strong id="shop-funds">0</strong>. Ten arsenal slots; matching weapons stack.</p>
-<p class="note">Undo removes copies bought during this visit. Carter doubles prices while active.</p>
-<div class="controls"><button id="done-shopping">Done shopping</button></div>
-<div id="shop-inventory"></div><div id="shop" class="shop"></div>
+<header class="bazaar-title"><img src="assets/bazaar.png" width="490" height="164" alt=""><h2 id="bazaar-heading">Weapons Bazaar</h2></header>
+<div class="shop-funds-box"><div>Funds</div><strong id="shop-funds">0</strong></div>
+    <button id="done-shopping">DONE</button>
+    <div id="shop-inventory"></div><div id="shop" class="shop"></div>
 </section>
 <div class="game" id="game-layout" hidden>
+<div class="match-controls"><button id="pause" disabled>Pause</button></div>
 <section class="board-panel player" aria-labelledby="player-heading">
 <h2 id="player-heading">You</h2>
-<p class="stats">Score: <span id="score">0</span><br>Lines: <span id="lines">0</span> / Funds: $<span id="funds">0</span></p>
-<canvas id="board" width="300" height="840" tabindex="0" aria-label="Your BattleTris board. Arrow keys move and rotate, space drops, P requests pause."></canvas>
+
+<canvas id="board" width="230" height="644" tabindex="0" aria-label="Your BattleTris board. Arrow keys move and rotate, space starts a fast drop, P pauses."></canvas>
 <div class="controls play-controls" aria-label="Game controls">
 <button data-command="0" disabled aria-label="Move left">Left</button><button data-command="2" disabled>Rotate</button><button data-command="1" disabled aria-label="Move right">Right</button>
-<button id="pause" disabled>Request pause</button><button data-command="3" disabled>Down</button><button data-command="4" disabled>Drop</button>
+<button data-command="3" disabled>Down</button><button data-command="4" disabled>Drop</button>
 </div><p id="player-effects" class="note effects"></p>
 </section>
 <section class="board-panel opponent" aria-labelledby="opponent-heading">
 <h2 id="opponent-heading">Opponent</h2>
-<p class="stats">Score: <span id="op-score">0</span><br>Lines: <span id="op-lines">0</span> / Reported funds: <span id="op-funds">Unknown</span></p>
-<canvas id="opponent-board" width="300" height="840" hidden aria-label="Reconnaissance report of the opponent's settled board"></canvas>
-<p id="recon-status" class="note">Buy a spy to reveal the opponent's board and funds.</p>
+
+<canvas id="opponent-board" width="230" height="644" hidden aria-label="Reconnaissance report of the opponent's settled board"></canvas>
+<div class="recon-placeholder"><strong>Reconnaissance</strong><span>Opponent reports will appear here.</span></div>
+      <p id="recon-status" class="note">Buy a spy to reveal the opponent's board and funds.</p>
 </section>
-<aside id="online-sidebar"><section id="combat"><p id="bazaar-countdown"></p><p id="combat-message" class="note" role="status"></p>
-<section id="inventory-panel" aria-labelledby="arsenal-heading"><h2 id="arsenal-heading">Your arsenal</h2><div id="arsenal" class="arsenal"></div></section></section>
+<aside id="online-sidebar">
+<section class="score-box" aria-label="Match scores">
+  <div class="score-row">Your score: <span id="score">0</span></div>
+  <div class="score-row">Opponent's score: <span id="op-score">0</span></div>
+  <div class="score-row score-gap">Your lines: <span id="lines">0</span></div>
+  <div class="score-row">Opponent's lines: <span id="op-lines">0</span></div>
+  <div class="score-row score-gap">Your funds: <span id="funds">0</span></div>
+  <div class="score-row">Opponent's funds: <span id="op-funds">0</span></div>
+<div class="score-row score-gap">Lines 'til bazaar: <span id="bazaar-countdown">20</span></div></section><section id="combat"><p id="combat-message" class="note" role="status"></p>
+<section id="inventory-panel" aria-labelledby="arsenal-heading"><h2 id="arsenal-heading">Arsenal</h2><div id="arsenal" class="arsenal"></div></section></section>
 <details class="instructions"><summary>Controls and online play</summary>
-<p class="note">Left / right: move. Up: rotate. Down: step down. Space: drop. P: request pause or resume. 1-9 / 0: launch an arsenal slot.</p>
-<p class="note">Both players must agree to pause. Either player can resume. Switching tabs requests a pause and stops local input; your opponent must accept to stop the match. A lost connection stops both boards temporarily while the player reconnects.</p>
+<p class="note">Left / right: move. Up: rotate. Down: step down. Space: fast drop. P: pause or resume. 1-9 / 0: launch an arsenal slot.</p>
+<p class="note">Either player can pause or resume. Switching tabs pauses the match. A lost connection stops both boards temporarily while the player reconnects.</p>
 <p class="note">First to top out loses. The bazaar opens every 20 combined lines. Weapons arrive at a piece boundary. Human matches start without free reconnaissance; buy Ames, Ace, or Condor to receive reports.</p>
 <p class="note">The server runs the match. Controls wait for server updates, so network delay affects responsiveness. This release plays without sound.</p>
 </details></aside></div>
 </main>
+<script src="ui.js"></script>
 <script src="online.js"></script>
 </html>

@@ -8,8 +8,7 @@ const { performance } = require('node:perf_hooks');
 const { WebSocketServer, WebSocket } = require('ws');
 const build = path.resolve(__dirname, '../web/build');
 const createGame = require(path.join(build, 'battletris.js'));
-// Permit the existing offline startup/error guard without allowing arbitrary
-// inline scripts. Online code is entirely external.
+// Allow only the offline startup guard as an inline script.
 const bootstrapHashes = [...fs.readFileSync(path.join(build, 'index.html'), 'utf8')
   .matchAll(/<script>([\s\S]*?)<\/script>/g)]
   .map(match => `'sha256-${crypto.createHash('sha256').update(match[1]).digest('base64')}'`).join(' ');
@@ -30,8 +29,8 @@ function model(game, seed) {
       description: game.UTF8ToString(game._bt_weapon_description(token)),
       duration: game._bt_weapon_duration(token) })),
     seats: [seat(), seat()], started: false, ended: false, forcedResult: null, tick: 0, events: [],
-    paused: false, disconnectPaused: false, pauseRequestedBy: null, pauseLeft: 60000,
-    pauseStarted: null, created: Date.now(), touched: Date.now(), message: '' };
+    paused: false, disconnectPaused: false,
+    created: Date.now(), touched: Date.now(), message: '' };
 }
 function invoke(room, op, args) {
   if (room.events.length >= 100000) {
@@ -58,7 +57,7 @@ function view(room, side) {
   const snapshot = { v: 1, type: 'state', room: room.id, side, tick: room.tick,
     ack: room.seats[side].ack, phase: current, status, result,
     ready: room.seats.map(s => s.ready), connected: room.seats.map(s => Boolean(s.socket)),
-    pauseRequestedBy: room.pauseRequestedBy, own: null, opponent: null, recon: null,
+    own: null, opponent: null, recon: null,
     catalog: [], linesUntilBazaar: 0, message: room.message };
   if (!room.started) return snapshot;
   snapshot.own = { cells: array(g, g._bt_side_cells(side)), score: g._bt_side_score(side),
@@ -82,7 +81,7 @@ function view(room, side) {
 }
 async function createService(options = {}) {
   const origins = new Set(options.origins || ['http://localhost:8080', 'http://127.0.0.1:8080']);
-  const graceMs = options.graceMs ?? 30000, pauseMs = options.pauseMs ?? 60000;
+  const graceMs = options.graceMs ?? 30000;
   const roomIdleMs = options.roomIdleMs ?? 300000, maxRooms = options.maxRooms ?? 32;
   const rooms = new Map(), connections = new Set(), perIP = new Map();
   let creating = 0, closed = false;
@@ -97,7 +96,7 @@ async function createService(options = {}) {
     const file = path.resolve(build, '.' + pathname);
     if (!file.startsWith(build + path.sep)) { response.writeHead(404).end(); return; }
     const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
-      '.wasm': 'application/wasm', '.png': 'image/png', '.json': 'application/json' };
+      '.css': 'text/css; charset=utf-8', '.wasm': 'application/wasm', '.png': 'image/png', '.json': 'application/json' };
     if (!types[path.extname(file)]) { response.writeHead(404).end(); return; }
     fs.stat(file, (error, stat) => {
       if (error || !stat.isFile()) { response.writeHead(404).end(); return; }
@@ -112,9 +111,7 @@ async function createService(options = {}) {
   function send(socket, message) {
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
     if (socket.bufferedAmount > 262144) { socket.terminate(); return; }
-    // Catalog text is immutable for a room. Transmit it on the first active
-    // snapshot and whenever this viewer's prices change (for example Carter).
-    // A new socket always receives the full catalog, including on reconnect.
+    // Send catalog metadata on connection and when this viewer's prices change.
     if (message.type === 'state' && message.own) {
       const prices = message.catalog.map(item => item.price).join(',');
       if (socket.catalogPrices === prices) {
@@ -142,8 +139,7 @@ async function createService(options = {}) {
     broadcast(room);
   }
   function unpause(room) {
-    if (room.pauseStarted !== null) room.pauseLeft = Math.max(0, room.pauseLeft - (Date.now() - room.pauseStarted));
-    room.pauseStarted = null; room.paused = false; room.pauseRequestedBy = null;
+    room.paused = false;
     if (!room.disconnectPaused) invoke(room, '_bt_set_paused', [0]);
   }
   server.on('upgrade', (request, socket, head) => {
@@ -196,7 +192,7 @@ async function createService(options = {}) {
             const game = await createGame();
             if (closed || socket.readyState !== WebSocket.OPEN) return;
             const seed = options.seedFactory ? options.seedFactory() >>> 0 : crypto.randomBytes(4).readUInt32LE();
-            const room = model(game, seed); room.pauseLeft = pauseMs; rooms.set(room.id, room); attach(socket, room, 0, true);
+            const room = model(game, seed); rooms.set(room.id, room); attach(socket, room, 0, true);
           } catch { error(socket, 'unavailable', 'Could not initialize a match.'); }
           finally { socket.busy = false; creating--; }
           return;
@@ -236,11 +232,9 @@ async function createService(options = {}) {
           room.started = true; room.seats.forEach(s => { s.graceLeft = graceMs; }); room.game._bt_online_start(room.seed); room.message = 'Match started.';
         }
       } else if (msg.type === 'pause') {
-        if (!['playing', 'bazaar'].includes(current) || room.pauseLeft <= 0) { reject('Pause is unavailable.'); return; }
-        if (room.pauseRequestedBy === 1 - side) {
-          room.paused = true; room.pauseStarted = Date.now(); room.pauseRequestedBy = null;
-          invoke(room, '_bt_set_paused', [1]); room.message = 'Both players agreed to pause.';
-        } else { room.pauseRequestedBy = side; room.message = 'Your opponent must accept the pause request.'; }
+        if (!['playing', 'bazaar'].includes(current)) { reject('Pause is unavailable.'); return; }
+        room.paused = true;
+        invoke(room, '_bt_set_paused', [1]); room.message = 'Match paused.';
       } else if (msg.type === 'resume') {
         if (current !== 'paused') { reject('The match is not paused.'); return; }
         unpause(room); room.message = 'Match resumed.';
@@ -278,7 +272,6 @@ async function createService(options = {}) {
         else { room.ended = true; room.forcedResult = 'draw'; }
         room.message = 'Reconnect grace period expired.';
       }
-      if (room.paused && Date.now() - room.pauseStarted >= room.pauseLeft) { unpause(room); room.message = 'Pause time expired.'; }
       if (room.started && !room.ended && !room.paused && !room.disconnectPaused && ![2, 3, 4].includes(room.game._bt_status())) {
         for (let n = 0; n < steps && !room.ended; n++) {
           if (room.events.length >= 100000) { invoke(room, '_bt_tick', [10]); break; }
@@ -356,7 +349,7 @@ if (require.main === module) {
   for (const origin of origins) { const parsed = new URL(origin); if (!['http:', 'https:'].includes(parsed.protocol) || parsed.origin !== origin) throw Error('ORIGINS must contain exact HTTP(S) origins'); }
   createService({ origins }).then(async service => {
     const address = await service.listen(port, process.env.HOST || '127.0.0.1');
-    console.log(`BattleTris listening on ${address.address}:${address.port}`);
+    console.log(`BattleTris listening on http://${address.family === 'IPv6' ? `[${address.address}]` : address.address}:${address.port}`);
     for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => { service.close().then(() => process.exit(0)); });
   }).catch(error => { console.error(error.message); process.exitCode = 1; });
 }

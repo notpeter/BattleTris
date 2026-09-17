@@ -1,3 +1,4 @@
+#include "Drop.H"
 #include "Game.H"
 #include "BTBox.H"
 #include <cassert>
@@ -122,7 +123,7 @@ void queuedDirectionAndSwap() {
   BTWeapon up(BT_UPBYSIDE), happy(BT_NICE_DAY);
   up.duration_ = 10;
   game.queueWeapon(up); game.queueWeapon(happy);
-  game.input(4);
+  finishDrop(game);
   assert(game.active && game.active->isHappy() && !game.over);
   assert(game.active->y() == BT_BOARD_HGT - 4);
   const int x = game.active->x(), y = game.active->y();
@@ -133,10 +134,10 @@ void queuedDirectionAndSwap() {
   game.input(3);
   assert(game.active->y() == y - 1);
   game.queueWeapon(up);
-  game.input(4);
+  finishDrop(game);
   assert(game.weapons.remaining(BT_UPBYSIDE) == 20);
   assert(game.active && game.active->y() == BT_BOARD_HGT - 4);
-  peer.queueWeapon(up); peer.input(4);
+  peer.queueWeapon(up); finishDrop(peer);
   assert(peer.active && peer.active->y() == BT_BOARD_HGT - 4);
   game.swapSettledBoard(peer);
   assert(!game.weapons.BTActive[BT_UPBYSIDE] && !peer.weapons.BTActive[BT_UPBYSIDE]);

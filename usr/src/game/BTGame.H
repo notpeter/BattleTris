@@ -148,6 +148,7 @@ public:
 	void beginDrop();
 	void moveLeft();
 	void moveRight();
+	void moveDown();
 	void condor();
 	void reset();
 	void cleanUp();

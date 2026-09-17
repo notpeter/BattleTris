@@ -22,6 +22,8 @@ for original, item in local["assets"].items():
         assert len(data) == item["bytes"], item["file"]
         if original.endswith(".wasm"):
             assert response.headers.get_content_type() == "application/wasm", "Wrong WASM MIME type"
+        if original.endswith(".css"):
+            assert response.headers.get_content_type() == "text/css", "Wrong CSS MIME type"
         if original.endswith(".js"):
             assert response.headers.get_content_type() in ("text/javascript", "application/javascript"), "Wrong JS MIME type"
 print("HTTP release " + local["release"] + ": all assets match manifest and script/WASM MIME types are correct")

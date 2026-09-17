@@ -638,6 +638,7 @@ BTNetworkEntry *BTNetManager::netentry(int index)
 
 void BTNetManager::netupdate()
 {
+  if (g_resources.no_server) return;
   char *bufptr;
   short err;
   int i;
@@ -757,6 +758,7 @@ BTPlayer *BTNetManager::plyentry(char *name)
 
 void BTNetManager::plyupdate()
 {
+  if (g_resources.no_server) return;
   char *bufptr;
   short err;
   int i;

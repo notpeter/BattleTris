@@ -3,6 +3,10 @@ const createBattleTris = require("../build/battletris.js");
 
 (async () => {
   const game = await createBattleTris();
+  const drop = () => {
+    game._bt_input(4);
+    for (let i = 0; i < 45 && game._bt_status() === 0; ++i) game._bt_tick(10);
+  };
   const snapshot = (opponent = false) => {
     const ptr = (opponent ? game._bt_op_cells() : game._bt_cells()) >>> 2;
     return Array.from(game.HEAP32.subarray(ptr, ptr + game._bt_width() * game._bt_height()));
@@ -18,14 +22,14 @@ const createBattleTris = require("../build/battletris.js");
   game._bt_input(5);
   for (let i = 0; i < 6; ++i) game._bt_tick(100);
   assert.notDeepEqual(snapshot(), initial);
-  for (let i = 0; i < 1000 && game._bt_status() !== 2; ++i) game._bt_input(4);
+  for (let i = 0; i < 1000 && game._bt_status() !== 2; ++i) drop();
   assert.equal(game._bt_status(), 2);
   game._bt_reset(42);
   assert.deepEqual(snapshot(), initial);
   assert.equal(game._bt_lines(), 0);
   assert.equal(game._bt_funds(), 0);
   assert.equal(game._bt_score(), 0);
-  game._bt_start(42, 1, 2);
+  game._bt_start(42, 1, 10);
   assert.equal(game._bt_mode(), 1);
   const opponentInitial = snapshot(true);
   assert.equal(game._bt_recon_enabled(), 1);
@@ -61,11 +65,11 @@ const createBattleTris = require("../build/battletris.js");
   game._bt_input(5);
   const pausedPlayer = snapshot(), pausedOpponent = snapshot(true);
   for (let i = 0; i < 20; ++i) game._bt_tick(100);
-  game._bt_input(4);
+  drop();
   assert.deepEqual(snapshot(), pausedPlayer);
   assert.deepEqual(snapshot(true), pausedOpponent);
   game._bt_input(5);
-  for (let i = 0; i < 1000 && game._bt_status() < 2; ++i) game._bt_input(4);
+  for (let i = 0; i < 1000 && game._bt_status() < 2; ++i) drop();
   assert.equal(game._bt_status(), 2);
   const endedOpponent = snapshot(true);
   assert.equal(game._bt_recon_known(), 0);
@@ -97,13 +101,13 @@ const createBattleTris = require("../build/battletris.js");
   assert.equal(game._bt_weapon_duration(0), 3); // Feared Weird duration.
   assert.equal(game._bt_buy(8), 0);
   assert.equal(game._bt_leave_bazaar(), 0);
-  game._bt_start(42, 1, 2);
+  game._bt_start(42, 1, 10);
   for (let i = 0; i < 5000 && game._bt_status() === 0; ++i) game._bt_tick(100);
   assert.equal(game._bt_status(), 5); // Ernie reaches 20 lines naturally.
   assert.equal(game._bt_lines_until_bazaar(), 0);
   const shopPlayer = snapshot(), shopOpponent = snapshot(true);
   for (let i = 0; i < 20; ++i) game._bt_tick(100);
-  game._bt_input(4); game._bt_input(5);
+  drop(); game._bt_input(5);
   assert.equal(game._bt_status(), 5);
   assert.deepEqual(snapshot(), shopPlayer);
   assert.deepEqual(snapshot(true), shopOpponent);
@@ -118,7 +122,7 @@ const createBattleTris = require("../build/battletris.js");
   for (let i = 0; i < 20; ++i) game._bt_tick(100);
   assert(game._bt_pending(0) > 0);
   assert(game.UTF8ToString(game._bt_message()).includes("Ernie launched"));
-  game._bt_input(4);
+  drop();
   assert.equal(game._bt_pending(0), 0);
   assert(game._bt_remaining(0, 32) > 0); // Seeded Ernie bought The Force.
   game._bt_reset(42);

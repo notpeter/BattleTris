@@ -1,8 +1,7 @@
 EMXX ?= em++
 CXX ?= c++
 PYTHON ?= python3
-# emsdk adds a directory containing a `node/` subdirectory to PATH. Resolve
-# through the shell so GNU make cannot mistake that directory for an executable.
+# Avoid resolving emsdk's node/ directory as an executable.
 NODE ?= $(shell command -v node)
 GAME = ../usr/src/game
 PORTABLE = ../usr/src/portable
@@ -13,11 +12,11 @@ ENGINE = $(GAME)/BTPiece.C $(GAME)/BTPieceManager.C $(GAME)/BTBoardManager.C \
          $(PORTABLE)/BTBoxPortable.C $(PORTABLE)/BTPlanner.C
 SESSION = Game.C Match.C Catalog.C Recon.C
 TESTS = tests/core.C tests/planner.C tests/effects.C tests/combat.C tests/swaps.C tests/peers.C tests/structures.C tests/landing.C tests/motion.C tests/upside.C tests/upside_planner.C tests/recon.C tests/recon_match.C tests/humans.C
-HEADERS = $(wildcard $(GAME)/*.H $(PORTABLE)/*.H ../usr/src/stdlib/*.H) \
+HEADERS = tests/Drop.H $(wildcard $(GAME)/*.H $(PORTABLE)/*.H ../usr/src/stdlib/*.H) \
           Game.H Match.H Catalog.H Recon.H build/WeaponData.H
 
 .PHONY: all assets test test-wasm serve dist archive check-dist clean
-all: build/battletris.js build/index.html build/app.js build/online.html build/online.js assets
+all: build/battletris.js build/index.html build/app.js build/online.html build/online.js build/ui.js build/style.css build/guide.html assets
 
 assets: | build
 	rm -rf build/assets
@@ -34,6 +33,13 @@ build/battletris.js: $(ENGINE) $(SESSION) exports.C $(HEADERS) Makefile | build
 	  -sMODULARIZE=1 -sEXPORT_NAME=createBattleTris -sENVIRONMENT=web,node \
 	  -sEXPORTED_RUNTIME_METHODS=HEAP32,UTF8ToString \
 	  -sALLOW_MEMORY_GROWTH=1 -sASSERTIONS=1 -o $@
+
+build/ui.js: ui.js | build
+	cp $< $@
+build/style.css: style.css | build
+	cp $< $@
+build/guide.html: guide.html | build
+	cp $< $@
 
 build/index.html: index.html | build
 	cp $< $@

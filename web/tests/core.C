@@ -1,3 +1,4 @@
+#include "Drop.H"
 #include "Game.H"
 #include "BTBox.H"
 #include "Match.H"
@@ -118,19 +119,19 @@ static void lifecycle() {
   game.reset(42);
   const int startY = game.active->y();
   game.input(5);
-  for (int i = 0; i < 20; ++i) { game.tick(100); game.input(4); }
+  for (int i = 0; i < 20; ++i) { game.tick(100); finishDrop(game); }
   assert(game.active->y() == startY);
   game.input(5);
   for (int i = 0; i < 6; ++i) game.tick(100);
   assert(game.active->y() == startY + 1);
-  for (int i = 0; i < 1000 && !game.over; ++i) game.input(4);
+  for (int i = 0; i < 1000 && !game.over; ++i) finishDrop(game);
   assert(game.over && !game.active);
   game.reset(42);
   assert(!game.over && !game.paused && game.lines == 0 && game.funds == 0);
   // Restart while a piece is active, then destroy it under ASan.
   for (int i = 0; i < 100; ++i) {
     game.reset(i);
-    game.input(0); game.input(2); game.input(4);
+    game.input(0); game.input(2); finishDrop(game);
   }
 }
 
@@ -143,15 +144,15 @@ static void scoreRules() {
   game.input(3);
   game.input(3);
   assert(game.score == award);
-  game.input(4);
+  finishDrop(game);
   assert(game.score == award);
-  game.input(4);
+  finishDrop(game);
   assert(game.score == award + BT_BOARD_HGT);
   BrowserGame ai(true);
   ai.reset(42);
   ai.input(3);
   assert(ai.score == 0);
-  ai.input(4);
+  finishDrop(ai);
   assert(ai.score == BT_BOARD_HGT / 2);
 }
 
@@ -170,15 +171,31 @@ static void randomRules() {
     const int action = i % 5;
     a.input(action);
     noise.reset(i);
-    noise.input(4);
+    finishDrop(noise);
     b.input(action);
     if (a.over) { a.reset(123 + i); b.reset(123 + i); }
   }
 }
 
 static void matchRules() {
+  int previousPlacement = 6000;
+  for (int level = 0; level < 15; ++level) {
+    BrowserMatch match;
+    match.start(42, 1, level);
+    const auto generation = match.opponent.generation;
+    int elapsed = 0;
+    while (match.opponent.generation == generation && elapsed < 6000) {
+      match.tick(10);
+      elapsed += 10;
+    }
+    assert(match.opponent.generation > generation);
+    assert(elapsed <= previousPlacement);
+    previousPlacement = elapsed;
+  }
+  assert(previousPlacement < 1000); // Bionic must not stall on its zero-delay path.
+
   BrowserMatch a, b;
-  a.start(42, 1, 2); b.start(42, 1, 2);
+  a.start(42, 1, 10); b.start(42, 1, 10);
   for (int i = 0; i < 200; ++i) {
     a.tick(20);
     b.tick(10); b.tick(10);
@@ -188,10 +205,10 @@ static void matchRules() {
   assert(a.opponent.generation > 5 && a.opponent.score > 0);
   a.input(5);
   const auto player = state(a.player), opponent = state(a.opponent);
-  for (int i = 0; i < 50; ++i) { a.tick(100); a.input(4); }
+  for (int i = 0; i < 50; ++i) { a.tick(100); finishDrop(a); }
   assert(a.status() == 1 && state(a.player) == player && state(a.opponent) == opponent);
   a.input(5);
-  for (int i = 0; i < 1000 && a.status() == 0; ++i) a.input(4);
+  for (int i = 0; i < 1000 && a.status() == 0; ++i) finishDrop(a);
   assert(a.status() == 2);
   assert(!a.player.active && !a.opponent.active);
   assert(!a.recon().known() && !a.reconEnabled());
@@ -219,10 +236,10 @@ static void matchRules() {
 // Canonical trace used by compare.cjs. Hash both complete board snapshots and
 // counters after each action, so cross-build differences identify a trace step.
 static void replay() {
-  for (int combat = 0; combat < 8; ++combat) {
+  for (int mode : {1, 2}) for (int combat = 0; combat < 8; ++combat) {
   for (unsigned seed : {1u, 42u, 0xdeadbeefu}) {
     BrowserMatch match;
-    match.start(seed, 1, 2);
+    match.start(seed, mode, 10);
     if (combat) {
       // Explicit combat fixture: seed a shopping boundary and earned funds to
       // exercise purchases and attacks without a long pre-bazaar warm-up.
@@ -242,10 +259,16 @@ static void replay() {
                 : combat == 6
                   ? std::vector<int>{BT_UPBYSIDE, BT_BOTTLE, BT_FALL_OUT, BT_HATTER, BT_SLICK}
                   : std::vector<int>{BT_CONDOR, BT_ACE, BT_AMES, BT_RISE_UP, BT_NO_DICE};
-      for (int token : attacks)
+      for (int token : attacks) {
         assert(match.buy(token));
-      assert(match.leaveBazaar());
-      for (int slot = 0; slot < 5; ++slot) assert(match.launch(slot));
+        if (mode == 2) assert(match.sideBuy(1, token));
+      }
+      if (mode == 2) { assert(match.sideReady(0)); assert(match.sideReady(1)); }
+      else assert(match.leaveBazaar());
+      for (int slot = 0; slot < 5; ++slot) {
+        assert(match.launch(slot));
+        if (mode == 2) assert(match.sideLaunch(1, slot));
+      }
       if (combat == 5) {
         match.player.queueWeapon(catalogWeapon(BT_HATTER));
         match.player.queueWeapon(catalogWeapon(BT_SLICK));
@@ -264,7 +287,11 @@ static void replay() {
       }
       if (tick % 17 == 0) match.input((tick / 17) % 3);
       if (tick % 80 == 0) match.input(4);
-      if (tick == 350 || tick == 375) match.input(5);
+      if (mode == 2) {
+        if (tick % 19 == 0) match.sideInput(1, (tick / 19) % 3);
+        if (tick % 73 == 0) match.sideInput(1, 4);
+      }
+      if (tick == 350 || tick == 375) match.setPaused(tick == 350);
       match.tick(10);
       for (int value : state(match.player)) digest = (digest ^ uint32_t(value)) * 16777619u;
       for (int value : state(match.opponent)) digest = (digest ^ uint32_t(value)) * 16777619u;
@@ -283,8 +310,11 @@ static void replay() {
           digest = (digest ^ uint32_t(match.arsenalQuantity(side, slot))) * 16777619u;
         }
       digest = (digest ^ uint32_t(match.status())) * 16777619u;
-      if (tick % 40 == 0) std::cout << combat << ':' << seed << ':' << tick << ':' << digest << '\n';
-      if (match.status() == 5) match.leaveBazaar();
+      if (tick % 40 == 0) std::cout << mode << ':' << combat << ':' << seed << ':' << tick << ':' << digest << '\n';
+      if (match.status() == 5) {
+        if (mode == 2) { match.sideReady(0); match.sideReady(1); }
+        else match.leaveBazaar();
+      }
       else if (match.status() >= 2) match.reset(seed + tick);
     }
   }

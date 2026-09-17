@@ -87,12 +87,25 @@ static void moveRight(Widget, XEvent *, char **, unsigned *) {
   GAME->moveRight();
 }
 
+static void moveDown(Widget, XEvent *, char **, unsigned *) {
+  GAME->moveDown();
+}
+
 static void rotate(Widget, XEvent *, char **, unsigned *) {
   GAME->rotate();
 }
 
+/* Motif may translate physical arrows to osf virtual keysyms. */
 static String def_translations =
-   (String)"\"j\" : move_left()\n\
+   (String)"<Key>Left: move_left()\n\
+   <Key>Right: move_right()\n\
+   <Key>Up: rotate()\n\
+   <Key>Down: move_down()\n\
+   <Key>osfLeft: move_left()\n\
+   <Key>osfRight: move_right()\n\
+   <Key>osfUp: rotate()\n\
+   <Key>osfDown: move_down()\n\
+   \"j\" : move_left()\n\
    \"l\" : move_right()\n\
    \"k\" : rotate()\n\
    \"J\" : move_left()\n\
@@ -104,12 +117,10 @@ static String def_translations =
    \"C\" : condor()\n\
    \" \" : drop()";
 
-static XtTranslations def_translation_tab =
-  XtParseTranslationTable(def_translations);
-
 XtActionsRec def_actions[] = {
   { (char *)"move_left", moveLeft },
   { (char *)"move_right", moveRight },
+  { (char *)"move_down", moveDown },
   { (char *)"drop", drop },
   { (char *)"pause", pause },
   { (char *)"condor", condor },
@@ -153,8 +164,8 @@ static XtResource g_resdefs[] = {
   },
   {
     (char *)"keymappings", XtCTranslations, XtRTranslationTable,
-    sizeof(XtTranslations), XtOffsetOf(BTResources, keymappings), XtRImmediate,
-    (XtPointer) def_translation_tab
+    sizeof(XtTranslations), XtOffsetOf(BTResources, keymappings), XtRString,
+    (XtPointer) def_translations
   },
   {
     (char *)"blackColor", XtCColor, XtRPixel, sizeof(Pixel),
@@ -544,7 +555,7 @@ static int toolkit_init(int *argcptr, char *argv[])
   g_display = XtOpenDisplay(g_appctx, NULL, NULL, "BattleTris", g_options,
                             XtNumber(g_options), ARGC_PTR argcptr, argv);
 
-  XtAppAddActions( g_appctx, def_actions, 6 );
+  XtAppAddActions( g_appctx, def_actions, XtNumber(def_actions) );
 
   if(g_display == (Display *) NULL) {
     cerr << "BattleTris: Failed to open X display" << endl;

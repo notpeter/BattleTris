@@ -1,3 +1,4 @@
+#include "Drop.H"
 #include "Game.H"
 #include "BTPlanner.H"
 #include "BTBox.H"
@@ -158,9 +159,9 @@ void falloutEscape() {
   assert(game.funds == 0 && game.lines == 0);
 
   BrowserMatch match;
-  match.start(81, 1, 2);
+  match.start(81, 1, 10);
   match.opponent.queueWeapon(fallout);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   const auto generation = match.opponent.generation;
   for (int tick = 0; tick < 100; ++tick) match.tick(10);
   assert(match.opponent.generation > generation && !match.opponent.over);

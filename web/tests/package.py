@@ -2,6 +2,7 @@
 """Verify distribution integrity, cache invalidation and reproducible archives."""
 
 import hashlib
+import html
 import importlib.util
 import json
 import re
@@ -28,13 +29,32 @@ def verify(directory):
         assert hashlib.sha256(data).hexdigest() == item["sha256"], item["file"]
         assert len(data) == item["bytes"], item["file"]
     assets = manifest["assets"]
-    html = (directory / "index.html").read_text()
-    assert 'src="' + assets["battletris.js"]["file"] + '"' in html
-    assert 'src="' + assets["app.js"]["file"] + '"' in html
+    markup = (directory / "index.html").read_text()
+    assert 'src="' + assets["battletris.js"]["file"] + '"' in markup
+    assert 'src="' + assets["app.js"]["file"] + '"' in markup
     if "online.html" in assets:
         online = (directory / "online.html").read_text()
         assert 'src="' + assets["online.js"]["file"] + '"' in online
         assert 'src="online.js"' not in online
+    for page in directory.glob("*.html"):
+        for target in re.findall(r'(?:src|href)="([^"#?]+)"', page.read_text()):
+            if ":" not in target:
+                assert (directory / target).is_file(), (page.name, target)
+    guide = directory / "guide.html"
+    if guide.exists():
+        def records(name):
+            return [line.strip() for line in (ROOT.parent / "usr/src/share" / name).read_text().splitlines()
+                    if line.strip() and not line.startswith("#")]
+        names, prices = records("btweapons.db"), records("btweaponsp.db")
+        entries = re.findall(r"<dt><span>(.*?)</span><strong>\$(\d+)</strong><small>(.*?)</small></dt>", guide.read_text())
+        assert len(entries) == len(names) // 2 == 34
+        expected = []
+        for i in range(len(entries)):
+            price, duration = map(int, prices[i * 3:i * 3 + 2])
+            term = str(duration) + " lines" if duration else "instant"
+            expected.append((names[i * 2], str(price), term))
+        expected.sort(key=lambda entry: int(entry[1]))
+        assert [(html.unescape(name), price, term) for name, price, term in entries] == expected
     loader = (directory / assets["battletris.js"]["file"]).read_text()
     assert json.dumps(assets["battletris.wasm"]["file"]) in loader
     assert '"battletris.wasm"' not in loader
@@ -47,7 +67,10 @@ with tempfile.TemporaryDirectory(prefix="battletris-package-test-") as temporary
     base = Path(temporary)
     source, output = base / "source", base / "dist"
     source.mkdir()
-    (source / "index.html").write_text('<script src="battletris.js"></script><script src="app.js"></script>')
+    (source / "index.html").write_text('<link rel="stylesheet" href="style.css"><script src="battletris.js"></script><script src="ui.js"></script><script src="app.js"></script>')
+    (source / "style.css").write_text("body { color: blue; }")
+    (source / "ui.js").write_text('draw("assets/icon.svg")')
+    (source / "guide.html").write_text((ROOT / "guide.html").read_text())
     (source / "battletris.js").write_text('locateFile("battletris.wasm")')
     (source / "battletris.wasm").write_bytes(b"first binary")
     (source / "online.html").write_text('<script src="online.js"></script>')
@@ -79,6 +102,7 @@ with tempfile.TemporaryDirectory(prefix="battletris-package-test-") as temporary
     assert third["assets"]["assets/icon.svg"] != second["assets"]["assets/icon.svg"]
     assert third["assets"]["app.js"] != second["assets"]["app.js"]
     assert third["assets"]["online.js"] != second["assets"]["online.js"]
+    assert third["assets"]["ui.js"] != second["assets"]["ui.js"]
     assert third["assets"]["battletris.js"] == second["assets"]["battletris.js"]
     assert third["assets"]["assets/icon.svg"]["file"] in (output / third["assets"]["app.js"]["file"]).read_text()
 

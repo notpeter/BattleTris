@@ -57,7 +57,7 @@ void BrowserGame::reset(unsigned seed) {
 void BrowserGame::spawn() {
   hatterElapsed_ = slickElapsed_ = 0;
   slickSuppressed_ = false;
-  sliding_ = false;
+  sliding_ = fastDrop_ = false;
   slideElapsed_ = elapsed = 0;
   ++generation;
   dropAwarded_ = false;
@@ -124,7 +124,7 @@ void BrowserGame::input(int command) {
   }
   if (over || paused || !active) return;
   // BTGame::beginDrop awards once, based on the origin at drop initiation.
-  // Here both manual step-down and instant drop adapt that fast-drop action.
+  // Manual step-down retains the same once-per-piece score award.
   if (!computer_ && (command == 3 || command == 4) && !dropAwarded_) {
     score += BT_BOARD_HGT - active->y();
     dropAwarded_ = true;
@@ -136,9 +136,7 @@ void BrowserGame::input(int command) {
   case 2: rotateActive(); break;
   case 3: down(); elapsed = 0; break;
   case 4:
-    while (moveActive(0, gravityDirection())) {}
-    lock();
-    elapsed = 0;
+    if (!fastDrop_) { fastDrop_ = true; elapsed = 0; }
     break;
   }
 }
@@ -165,9 +163,11 @@ void BrowserGame::tick(double milliseconds, bool gravity) {
   while (!over && active && remaining > 0) {
     const bool hatter = weapons.BTActive[BT_HATTER];
     const bool slick = weapons.BTActive[BT_SLICK] && !sliding_ && !slickSuppressed_;
-    const double physicalInterval = sliding_ ? BT_SLIDE_TIME : gravityInterval();
+    const double fastInterval = std::ldexp(double(BT_FAST_DROP_TIME),
+      std::min(5, weapons.applications(BT_MEADOW)));
+    const double physicalInterval = sliding_ ? BT_SLIDE_TIME : fastDrop_ ? fastInterval : gravityInterval();
     const double physicalElapsed = sliding_ ? slideElapsed_ : elapsed;
-    const double untilPhysical = sliding_ || gravity
+    const double untilPhysical = sliding_ || gravity || fastDrop_
       ? std::max(0.0, physicalInterval - physicalElapsed) : infinity;
     const double untilHatter = hatter ? std::max(0.0, 20.0 - hatterElapsed_) : infinity;
     const double untilSlick = slick ? std::max(0.0, 20.0 - slickElapsed_) : infinity;
@@ -177,7 +177,7 @@ void BrowserGame::tick(double milliseconds, bool gravity) {
     if (hatter) hatterElapsed_ += advance;
     if (slick) slickElapsed_ += advance;
     if (sliding_) slideElapsed_ += advance;
-    else if (gravity) elapsed += advance;
+    else if (gravity || fastDrop_) elapsed += advance;
     remaining -= advance;
     if (advance < next) return;
 

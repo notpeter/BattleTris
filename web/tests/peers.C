@@ -1,3 +1,4 @@
+#include "Drop.H"
 #include "Match.H"
 #include "BTBox.H"
 #include <array>
@@ -16,7 +17,7 @@ void activate(BrowserGame &game, BTWeaponToken token, unsigned short duration) {
   game.sendPlusMe(BT_WPN_ON, &weapon);
 }
 void shop(BrowserMatch &match, unsigned seed) {
-  match.start(seed, 1, 0);
+  match.start(seed, 1, 2);
   match.player.lines = 20; // Physical bazaar threshold coverage is in combat.C.
   match.player.funds = 10000;
   match.opponent.funds = 1000;
@@ -51,18 +52,18 @@ void signedKeating() {
   assert(match.opponent.pendingWeapons() == 1 && match.opponent.generation == generation);
   // The transfer uses the signed balance at delivery, not a stale launch value.
   match.opponent.funds = -120;
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.opponent.funds == 0 && match.player.funds == -20);
   assert(match.opponent.pendingWeapons() == 0 && !match.opponent.weapons.BTActive[BT_KEATING]);
 }
 
 void mondaleFunds() {
   BrowserMatch match;
-  match.start(202, 1, 0);
+  match.start(202, 1, 2);
   BTWeapon tax(BT_MONDALE);
   tax.duration_ = 2;
   match.opponent.queueWeapon(tax);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.opponent.weapons.remaining(BT_MONDALE) == 2);
   match.opponent.board.clear();
   activate(match.player, BT_MONDALE, 5);
@@ -86,11 +87,11 @@ void mondaleFunds() {
 
 void lawyersDeferred() {
   BrowserMatch match;
-  match.start(303, 1, 0);
+  match.start(303, 1, 2);
   BTWeapon lawyers(BT_LAWYERS);
   lawyers.duration_ = 2;
   match.opponent.queueWeapon(lawyers);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   match.opponent.board.clear();
   const auto victimGeneration = match.opponent.generation;
   row(match.player, 27, 3);
@@ -109,7 +110,7 @@ void lawyersDeferred() {
   row(match.player, 27, 3);
   match.player.board.checkLines();
   assert(match.opponent.pendingWeapons() == 2); // No new rise after expiry.
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.opponent.pendingWeapons() == 0);
   for (int y = 26; y <= 27; ++y) {
     int count = 0;
@@ -130,7 +131,7 @@ void susanInventory() {
   assert(match.launch(find(match, BT_SUSAN)));
   --sender[BT_SUSAN];
   assert(inventory(match, 0) == sender && inventory(match, 1) == target);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(inventory(match, 0) == target && inventory(match, 1) == sender);
   for (int slot = 0; slot < BT_ARSENAL_SIZE; ++slot) assert(!match.refundable(slot));
   match.reset(405);
@@ -149,7 +150,7 @@ void swapThroughMatch() {
   const auto pg = match.player.generation, og = match.opponent.generation;
   assert(match.launch(find(match, BT_SWAP)));
   assert(match.player.generation == pg && match.opponent.generation == og);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.player.generation == pg + 1 && match.opponent.generation == og + 1);
   assert(match.opponent.board.occupied(0, 20) && match.opponent.board.cell(0, 20) == -1);
   assert(!match.player.board.occupied(0, 20) && valuable->value() == 17);
@@ -184,13 +185,13 @@ void nullifiedPeersAndReset() {
 
 void bottleSwapOrdering() {
   BrowserMatch match;
-  match.start(707, 1, 0);
+  match.start(707, 1, 2);
   activate(match.player, BT_BOTTLE, 10);
   activate(match.opponent, BT_BOTTLE, 10);
   activate(match.player, BT_FALL_OUT, 5);
   const auto generation = match.player.generation;
   match.opponent.queueWeapon(catalogWeapon(BT_SWAP));
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.player.generation == generation + 1);
   for (BrowserGame *game : {&match.player, &match.opponent}) {
     assert(!game->weapons.BTActive[BT_BOTTLE]);
@@ -204,7 +205,7 @@ void bottleSwapOrdering() {
   // A later attack in the same batch can establish a new neck after Swap.
   match.opponent.queueWeapon(catalogWeapon(BT_SWAP));
   match.opponent.queueWeapon(catalogWeapon(BT_BOTTLE));
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.opponent.weapons.remaining(BT_BOTTLE) == catalogWeapon(BT_BOTTLE)->duration());
   assert(match.opponent.board.cell(0, 10) == BT_STRUCT);
   assert(!match.player.weapons.BTActive[BT_BOTTLE]);
@@ -218,7 +219,7 @@ void upsideMatchLifecycle() {
   const auto generation = match.opponent.generation;
   assert(match.launch(find(match, BT_UPBYSIDE)));
   assert(match.opponent.gravityDirection() == 1);
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.opponent.gravityDirection() == -1);
   assert(match.opponent.generation == generation + 1);
   assert(match.opponent.active->y() == BT_BOARD_HGT - 4);
@@ -227,10 +228,10 @@ void upsideMatchLifecycle() {
   assert(match.opponent.generation > invertedGeneration && !match.opponent.over);
 
   match.player.queueWeapon(catalogWeapon(BT_UPBYSIDE));
-  match.player.input(4);
+  finishDrop(match.player);
   assert(match.player.gravityDirection() == -1);
   match.opponent.queueWeapon(catalogWeapon(BT_SWAP));
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.player.gravityDirection() == 1 && match.opponent.gravityDirection() == 1);
   assert(match.player.active->y() == 0 && match.opponent.active->y() == 0);
   assert(!match.player.weapons.remaining(BT_UPBYSIDE));
@@ -238,7 +239,7 @@ void upsideMatchLifecycle() {
   // A later queued inversion affects the received grid after Swap normalizes it.
   match.opponent.queueWeapon(catalogWeapon(BT_SWAP));
   match.opponent.queueWeapon(catalogWeapon(BT_UPBYSIDE));
-  match.opponent.input(4);
+  finishDrop(match.opponent);
   assert(match.opponent.gravityDirection() == -1 && match.player.gravityDirection() == 1);
   match.reset(809);
   assert(match.opponent.gravityDirection() == 1 && match.player.gravityDirection() == 1);

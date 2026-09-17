@@ -1,16 +1,15 @@
 # Build from the repository root with -f tests/native/Containerfile.
 FROM docker.io/library/debian:bookworm-slim
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    build-essential automake libmotif-dev libxt-dev libxext-dev libx11-dev \
+    build-essential libmotif-dev libxt-dev libxext-dev libx11-dev \
     xvfb xauth xdotool x11-utils xfonts-base xfonts-75dpi xfonts-100dpi imagemagick \
     && rm -rf /var/lib/apt/lists/*
 COPY usr /work
+COPY tests/native/config.C /tests/native/config.C
 WORKDIR /work/src
-# The historical build expects this helper in its generated bin directory.
-RUN mkdir -p ../bin && cp /usr/share/automake-*/install-sh ../bin/install-sh \
-    && ./configure --with-motif-includes=/usr/include \
+RUN ./configure --with-motif-includes=/usr/include \
         --with-motif-libs=/usr/lib/$(gcc -dumpmachine) \
-    && make \
+    && make check all \
     && useradd --create-home player && chown -R player:player /work
 COPY tests/native/smoke.sh /smoke.sh
 USER player

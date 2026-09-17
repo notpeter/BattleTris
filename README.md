@@ -30,8 +30,8 @@ Solaris on SPARC, using [X11](https://en.wikipedia.org/wiki/X_Window_System) and
 [Motif](https://en.wikipedia.org/wiki/Motif_(software)).
 This version works on both 
 MacOS (via [XQuartz](https://www.xquartz.org/) and OpenMotif)
-and on Linux.  To compile BattleTris, you should be able to 
-(more or less) run `configure`.
+and on Linux.  See [native build instructions](PORTING.md#build-the-native-application-on-macos)
+for working configure flags and an uninstalled Ernie launch.
 
 Note that BattleTris dates from a time that the highest resolution
 monitors were 1600x1280; those on modern (higher resolution) displays
@@ -64,6 +64,10 @@ supported.
 Private two-human matches are available through the authoritative Node.js/WASM
 server. See [MULTIPLAYER.md](MULTIPLAYER.md) for setup, reconnect/pause rules,
 protocol details, verification, and remaining work before a public service.
+
+For concise rules, strategy, controls, and all 34 purchases, see the
+[gameplay and weapons guide](web/guide.html). The packaged browser includes this
+guide as a static page.
 
 ## Gameplay
 

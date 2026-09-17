@@ -29,19 +29,5 @@ BTWeapon *catalogWeapon(int token) {
 }
 
 bool supportedWeapon(int token) {
-  switch (token) {
-  case BT_AMES: case BT_ACE: case BT_CONDOR:
-  case BT_UPBYSIDE:
-  case BT_HATTER: case BT_SLICK:
-  case BT_NO_SLIDE:
-  case BT_FALL_OUT: case BT_BOTTLE:
-  case BT_SWAP: case BT_LAWYERS: case BT_MONDALE: case BT_KEATING: case BT_SUSAN:
-  case BT_FEARED_WEIRD: case BT_FOUR_BY_FOUR: case BT_RISE_UP:
-  case BT_FLIP_OUT: case BT_SPEEDY: case BT_MISSING: case BT_PIECE_IT:
-  case BT_BLIND: case BT_CARTER: case BT_REAGAN: case BT_NICE_DAY:
-  case BT_SO_LONG: case BT_NO_DICE: case BT_BUG: case BT_MEADOW:
-  case BT_MIRROR: case BT_TWILIGHT: case BT_BROKEN: case BT_FORCE: case BT_GIMP:
-    return true;
-  default: return false;
-  }
+  return token >= 0 && token < BT_MAX_WEAPONS;
 }

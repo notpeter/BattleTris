@@ -693,6 +693,12 @@ void BTGame::moveRight() {
 	}
 }
 
+void BTGame::moveDown() {
+  if (paused_ || in_baz_ == 1 || sliding_) return;
+  removeTimeOut(BT_SLICK_TIMEOUT);
+  drop();
+}
+
 void BTGame::rotate() {
   if (paused_) return;
   if (current_piece_) {

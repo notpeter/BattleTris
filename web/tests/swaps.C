@@ -1,3 +1,4 @@
+#include "Drop.H"
 #include "Game.H"
 #include "BTBox.H"
 #include <cassert>
@@ -70,7 +71,7 @@ void queuedSwapLifecycle() {
   peer.queueWeapon(noDice);
   target.queueWeapon(swap);
   target.queueWeapon(rise);
-  target.input(4);
+  finishDrop(target);
   assert(observer.seen.size() == 2 && observer.seen[0] == BT_SWAP && observer.seen[1] == BT_RISE_UP);
   assert(target.generation == targetGeneration + 1 && peer.generation == peerGeneration + 1);
   assert(target.active && peer.active && !target.over && !peer.over);
@@ -121,7 +122,7 @@ void observerOrdering() {
   game.funds = 100;
   BTWeapon keating(BT_KEATING);
   game.queueWeapon(keating);
-  game.input(4);
+  finishDrop(game);
   assert(observer.handled == 1 && game.funds == 0);
   assert(!game.weapons.BTActive[BT_KEATING]);
 }

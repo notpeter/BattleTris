@@ -55,6 +55,19 @@ def package(source, target):
                     text = text.replace(name, asset["file"])
             return text
 
+        for name in ("style.css", "ui.js"):
+            if (source / name).exists():
+                emit(name, asset_references((source / name).read_text()).encode())
+
+        def shared_references(text):
+            for name in ("style.css", "ui.js"):
+                if name in assets:
+                    text = text.replace('"' + name + '"', '"' + assets[name]["file"] + '"')
+            return text
+
+        if (source / "guide.html").exists():
+            emit("guide.html", shared_references((source / "guide.html").read_text()).encode(), hashed=False)
+
         html = asset_references((source / "index.html").read_text())
         scripts = re.findall(r'<script\b[^>]*\bsrc="([^"?#]+\.js)"', html)
         if "battletris.js" not in scripts or "app.js" not in scripts:
@@ -65,23 +78,20 @@ def package(source, target):
             if script not in assets:
                 emit(script, asset_references((source / script).read_text()).encode())
             html = html.replace('src="' + script + '"', 'src="' + assets[script]["file"] + '"')
-        emit("index.html", html.encode(), hashed=False)
+        emit("index.html", shared_references(html).encode(), hashed=False)
 
-        # The optional online client needs the separately operated room service.
-        # Keep its entry stable while hashing its script and shared artwork.
+        # Online play requires the room service at /ws.
         if (source / "online.html").exists():
             online = asset_references((source / "online.html").read_text())
             script = emit("online.js", asset_references((source / "online.js").read_text()).encode())
             online = online.replace('src="online.js"', 'src="' + script + '"')
-            emit("online.html", online.encode(), hashed=False)
-
+            emit("online.html", shared_references(online).encode(), hashed=False)
 
         emit("LICENSE", (ROOT.parent / "LICENSE").read_bytes(), hashed=False)
         if (ROOT / "RELEASE.md").exists():
             release_notes = (ROOT / "RELEASE.md").read_text().replace("(../PORTING.md)", "(PORTING.md)").replace("(../MULTIPLAYER.md)", "(MULTIPLAYER.md)")
             emit("RELEASE.md", release_notes.encode(), hashed=False)
         porting = (ROOT.parent / "PORTING.md").read_text().replace("(web/", "(")
-        porting = porting.replace("[`BTGame::exposeEvent`](usr/src/game/BTGame.C)", "`BTGame::exposeEvent`")
         emit("PORTING.md", porting.encode(), hashed=False)
         emit("MULTIPLAYER.md", (ROOT.parent / "MULTIPLAYER.md").read_bytes(), hashed=False)
         for name in ("README.md", "manifest.json"):

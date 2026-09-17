@@ -19,7 +19,8 @@ using namespace std;
 static char BTCONFIGFILE_DEFPATH[] = "/";
 
 BTConfigFile::BTConfigFile(const char *configfile)
-: status_(BTCONFIGFILE_OK), datadir_(0), logsdir_(0), pipedir_(0), slvpath_(0)
+: datadir_(0), logsdir_(0), pipedir_(0), slvpath_(0), audiodir_(0), artdir_(0),
+  status_(BTCONFIGFILE_OK)
 {
   if(configfile == 0) {
     status_ = BTCONFIGFILE_BADFILE;
@@ -79,89 +80,31 @@ BTConfigFile::BTConfigFile(const char *configfile)
 
 BTConfigFile::~BTConfigFile()
 {
-  if(datadir_ != BTCONFIGFILE_DEFPATH)
-    delete datadir_;
-  if(logsdir_ != BTCONFIGFILE_DEFPATH)
-    delete logsdir_;
-  if(pipedir_ != BTCONFIGFILE_DEFPATH)
-    delete pipedir_;
-  if(slvpath_ != BTCONFIGFILE_DEFPATH)
-    delete slvpath_;
+  char *paths[] = {datadir_, logsdir_, pipedir_, slvpath_, audiodir_, artdir_};
+  for (unsigned i = 0; i < 6; ++i)
+    if (paths[i] != BTCONFIGFILE_DEFPATH) delete [] paths[i];
 }
 
 BTConfigFile::BTConfigFile(const BTConfigFile& other)
-: status_(BTCONFIGFILE_OK), datadir_(0), logsdir_(0), pipedir_(0), slvpath_(0)
+: datadir_(0), logsdir_(0), pipedir_(0), slvpath_(0), audiodir_(0), artdir_(0),
+  status_(BTCONFIGFILE_OK)
 {
-  if(other.datadir_) {
-    if((datadir_ = new char [strlen(other.datadir_) + 1]))
-      strcpy(datadir_, other.datadir_);
-    else
-      status_ = BTCONFIGFILE_MEMERR;
-  }
-
-  if(other.logsdir_) {
-    if((logsdir_ = new char [strlen(other.logsdir_) + 1]))
-      strcpy(logsdir_, other.logsdir_);
-    else
-      status_ = BTCONFIGFILE_MEMERR;
-  }
-
-  if(other.pipedir_) {
-    if((pipedir_ = new char [strlen(other.pipedir_) + 1]))
-      strcpy(pipedir_, other.pipedir_);
-    else
-      status_ = BTCONFIGFILE_MEMERR;
-  }
-
-  if(other.slvpath_) {
-    if((slvpath_ = new char [strlen(other.slvpath_) + 1]))
-      strcpy(slvpath_, other.slvpath_);
-    else
-      status_ = BTCONFIGFILE_MEMERR;
-  }
+  *this = other;
 }
 
 BTConfigFile& BTConfigFile::operator=(const BTConfigFile& other)
 {
-  if(this == &other)
-    return *this;
-
-  delete datadir_;
-  delete logsdir_;
-  delete pipedir_;
-  delete slvpath_;
-
-  datadir_ = logsdir_ = pipedir_ = slvpath_ = 0;
-  status_ = BTCONFIGFILE_OK;
-
-  if(other.datadir_) {
-    if((datadir_ = new char [strlen(other.datadir_) + 1]))
-      strcpy(datadir_, other.datadir_);
-    else
-      status_ = BTCONFIGFILE_MEMERR;
+  if (this == &other) return *this;
+  char **dest[] = {&datadir_, &logsdir_, &pipedir_, &slvpath_, &audiodir_, &artdir_};
+  const char *source[] = {other.datadir_, other.logsdir_, other.pipedir_,
+                         other.slvpath_, other.audiodir_, other.artdir_};
+  for (unsigned i = 0; i < 6; ++i) {
+    char *copy = source[i] ? new char[strlen(source[i]) + 1] : 0;
+    if (copy) strcpy(copy, source[i]);
+    if (*dest[i] != BTCONFIGFILE_DEFPATH) delete [] *dest[i];
+    *dest[i] = copy;
   }
-
-  if(other.logsdir_) {
-    if((logsdir_ = new char [strlen(other.logsdir_) + 1]))
-      strcpy(logsdir_, other.logsdir_);
-    else
-      status_ = BTCONFIGFILE_MEMERR;
-  }
-
-  if(other.pipedir_) {
-    if((pipedir_ = new char [strlen(other.pipedir_) + 1]))
-      strcpy(pipedir_, other.pipedir_);
-    else
-      status_ = BTCONFIGFILE_MEMERR;
-  }
-
-  if(other.slvpath_) {
-    if((slvpath_ = new char [strlen(other.slvpath_) + 1]))
-      strcpy(slvpath_, other.slvpath_);
-    else
-      status_ = BTCONFIGFILE_MEMERR;
-  }
-
+  status_ = other.status_;
   return *this;
 }
 
@@ -170,12 +113,8 @@ int BTConfigFile::verifyfile(char **bufaddr, const char *token,
 {
   struct stat sbuf;
 
-  if((*bufaddr = new char [strlen(token) + 1]) == 0) {
-    status_ = BTCONFIGFILE_MEMERR;
-    return 0;
-  }
-
-  strcpy(*bufaddr, token);
+  if (*bufaddr != BTCONFIGFILE_DEFPATH) delete [] *bufaddr;
+  *bufaddr = 0;
 
   if(stat(token, &sbuf) < 0) {
     cerr << "\"" << file << "\", line " << line
@@ -191,6 +130,13 @@ int BTConfigFile::verifyfile(char **bufaddr, const char *token,
     return 0;
   }
 
+  if((*bufaddr = new char [strlen(token) + 1]) == 0) {
+    status_ = BTCONFIGFILE_MEMERR;
+    return 0;
+  }
+
+  strcpy(*bufaddr, token);
+
   return 1;
 }
 
@@ -199,12 +145,8 @@ int BTConfigFile::verifydir(char **bufaddr, const char *token,
 {
   struct stat sbuf;
 
-  if((*bufaddr = new char [strlen(token) + 1]) == 0) {
-    status_ = BTCONFIGFILE_MEMERR;
-    return 0;
-  }
-
-  strcpy(*bufaddr, token);
+  if (*bufaddr != BTCONFIGFILE_DEFPATH) delete [] *bufaddr;
+  *bufaddr = 0;
 
   if(stat(token, &sbuf) < 0) {
     cerr << "\"" << file << "\", line " << line
@@ -219,6 +161,13 @@ int BTConfigFile::verifydir(char **bufaddr, const char *token,
     status_ = BTCONFIGFILE_CONFERR;
     return 0;
   }
+
+  if((*bufaddr = new char [strlen(token) + 1]) == 0) {
+    status_ = BTCONFIGFILE_MEMERR;
+    return 0;
+  }
+
+  strcpy(*bufaddr, token);
 
   return 1;
 }

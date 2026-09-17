@@ -1,0 +1,3 @@
+#!/bin/sh
+# Supported platforms provide BSD or GNU install.
+exec install "$@"

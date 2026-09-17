@@ -50,8 +50,7 @@ frontend's origin. No service has been deployed as part of this implementation.
 - Inputs are ordered by arrival at the server. Gravity advances both boards
   in 10 ms steps; simultaneous gravity top-outs produce a draw. A sequential
   input that ends a match takes effect before a later arriving input.
-- Pause requires both players to agree. Either can resume. The room has a shared
-  60-second explicit pause allowance; expiry resumes automatically.
+- Either player can immediately pause or resume, matching the native game.
 - A lost connection suspends play. Each player has a cumulative 30-second
   reconnect allowance for the match. Reloading the same tab restores its seat
   from session storage and a fresh authoritative snapshot; unacknowledged
@@ -68,8 +67,19 @@ frontend's origin. No service has been deployed as part of this implementation.
 
 The client deliberately waits for server responses instead of predicting moves.
 Network round-trip time therefore affects control responsiveness. Hiding a tab
-stops local input and requests a mutual pause; it does not silently stop the
-other player's match. Sound remains a set of placeholders.
+stops local input and pauses both boards. Sound remains a set of placeholders.
+
+## Deterministic simulation
+
+The server chooses one match seed. Each board and each spy owns a derived,
+explicit 32-bit PRNG stream. Piece selection, dice, random board attacks, and
+spy noise use those streams; rendering and AI search do not consume them.
+Players have independent sequences, as in the native game, rather than identical
+pieces. Both browsers display the same authoritative match, with private views.
+The seed plus ordered inputs and 10 ms ticks reproduces the simulation; neither
+client rolls dice locally. Native/WASM replay checks include both human seats,
+bilateral attacks, and cached reconnaissance. Network arrival order can change
+a match, but replay of that order is deterministic.
 
 ## Protocol and privacy
 
@@ -145,7 +155,7 @@ Native/WASM tests cover two-human gravity/scoring, both-ready bazaar transitions
 bilateral attacks, reflected delivery, spies, pause, surrender, and same-tick
 deaths alongside the existing offline weapon and replay suites. Socket tests
 exercise isolated rooms, malformed commands, privacy, sequence replay, reconnect,
-forfeit, pause limits, Origin/frame/rate bounds and checkpoint reconstruction.
+forfeit, either-player pause, Origin/frame/rate bounds and checkpoint reconstruction.
 Browser checks exercise two independent contexts in Chromium, Firefox and
 WebKit, invitations, keyboard/touch controls, pause, reload reconnect, results,
 portrait/landscape layouts, and offline startup/error recovery under server CSP.

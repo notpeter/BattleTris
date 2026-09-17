@@ -15,11 +15,11 @@ config: dirs ../include/BTConfig.H
 dirs:
 	@mkdir -p ../include ../lib ../bin
 
-../include/BTConfig.H: BTConfig.H
+../include/BTConfig.H: BTConfig.H | dirs
 	@echo "+++ installing BattleTris configuration file"
-	sh ../bin/install-sh -c -m 0444 BTConfig.H ../include/BTConfig.H
+	$(INSTALL) -m 0444 BTConfig.H ../include/BTConfig.H
 
-src: dirs
+src: config
 	@echo "+++ building BattleTris include directory"
 	@( cd game && $(MAKE) common )
 	@echo "+++ building BattleTris standard library"
@@ -40,6 +40,13 @@ src: dirs
 	@( cd btref && $(MAKE) )
 	@echo "+++ building BattleTris client"
 	@( cd game && $(MAKE) )
+
+.PHONY: check
+check: config
+	$(CXX) -std=c++11 -g -fsanitize=address,undefined -fno-omit-frame-pointer \
+	    -I. -Idb ../../tests/native/config.C db/BTConfigFile.C db/ParsedFile.C \
+	    -o ../bin/config-test
+	../bin/config-test
 
 install:
 	#@echo "+++ installing BattleTris documentation"

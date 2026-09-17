@@ -62,7 +62,7 @@ class Client {
 
 (async () => {
   const service = await createService({ origins: ['http://localhost'], graceMs: 300,
-    pauseMs: 200, roomIdleMs: 10000, seedFactory: () => 42 });
+    roomIdleMs: 10000, seedFactory: () => 42 });
   const clients = [];
   const address = await service.listen(0, '127.0.0.1');
   const url = `ws://127.0.0.1:${address.port}`;
@@ -94,7 +94,7 @@ class Client {
       for (const command of commands) await player.send('input', { command });
       const moved = await player.state(after, value => value.ack === player.seq);
       assert.notEqual(moved.phase, 'ended', 'Placement fixture must reach the bazaar');
-      nextInput[side] = Date.now() + commands.length * 17;
+      nextInput[side] = Date.now() + Math.max(450, commands.length * 17);
       if (moved.phase === 'bazaar') break;
     }
   }
@@ -130,19 +130,19 @@ class Client {
     const untouched = await b.host.state(0, value => value.own && value.phase === 'playing');
     assert.equal(untouched.own.score, 0, 'Rooms must have isolated WASM instances');
     assert.equal(untouched.opponent.score, 0);
+    const startPause = b.guest.messages.length;
     await b.host.command('pause');
-    const paused = await b.guest.command('pause');
-    assert.equal(paused.phase, 'paused', 'Both players must approve suspension');
+    const paused = await b.guest.state(startPause, value => value.phase === 'paused');
+    assert.equal(paused.phase, 'paused', 'Either player immediately pauses both boards');
     const activeCheckpoint = await service.exportCheckpoint(b.first.room);
     const activeReplay = await service.restoreCheckpoint(activeCheckpoint);
     assert.equal(activeReplay.tick, paused.tick);
     assert.deepEqual(activeReplay.views[1].own, paused.own, 'Active checkpoint preserves private board state');
     assert.deepEqual(activeReplay.views[1].recon, paused.recon);
-    const timeoutStart = b.host.messages.length;
-    await b.host.state(timeoutStart, value => value.phase === 'playing');
-    const exhaustedStart = b.host.messages.length;
-    await b.host.send('pause');
-    await b.host.wait(message => message.type === 'error', exhaustedStart);
+    await delay(300);
+    assert.equal((await b.guest.command('resume')).phase, 'playing');
+    assert.equal((await b.guest.command('pause')).phase, 'paused');
+    assert.equal((await b.host.command('resume')).phase, 'playing');
     for (const peer of [a.host, a.guest, b.host, b.guest]) {
       for (const snapshot of peer.messages.filter(value => value.type === 'state' && value.own)) {
         assert.equal(snapshot.own.cells.length, 280);
@@ -236,6 +236,7 @@ class Client {
     const launched = await shopping.host.command('launch', { slot: 0 });
     assert.equal(launched.own.inventory[0].quantity, 0);
     await shopping.guest.command('input', { command: 4 });
+    await delay(450);
     let spy = await shopping.host.command('input', { command: 0 });
     assert(!spy.recon.known, 'Paid spy waits for the next victim placement');
     await shopping.guest.command('input', { command: 4 });
@@ -257,7 +258,9 @@ class Client {
     const beforePrices = inflation.guest.catalog;
     const beforeUpdates = inflation.guest.catalogUpdates;
     await inflation.host.command('launch', { slot: 0 });
-    const taxed = await inflation.guest.command('input', { command: 4 });
+    const beforeTax = inflation.guest.messages.length;
+    await inflation.guest.command('input', { command: 4 });
+    const taxed = await inflation.guest.state(beforeTax, value => value.catalog.find(item => item.token === carter.token).price === 2 * carter.price);
     assert.deepEqual(taxed.catalog.map(item => item.price), beforePrices.map(item => 2 * item.price));
     assert.equal(inflation.guest.catalogUpdates, beforeUpdates + 1);
     assert.equal(inflation.host.catalogUpdates, 1, 'Opponent prices remain private and unchanged');
@@ -279,7 +282,7 @@ class Client {
     assert.equal(await Promise.race([rateClosed, delay(2000).then(() => {
       throw new Error('Command flood was not disconnected');
     })]), 1008, 'Command rate limit closes abusive clients');
-    console.log('Online integration: isolated human rooms, private snapshots, checkpoint replay, sequence and phase validation, bounded pause/reconnect, lobby recovery, forfeit, surrender, Origin, payload and rate limits passed');
+    console.log('Online integration: isolated human rooms, private snapshots, checkpoint replay, sequence and phase validation, either-player pause and bounded reconnect, lobby recovery, forfeit, surrender, Origin, payload and rate limits passed');
   } finally {
     await Promise.all(clients.map(value => value.close()));
     await service.close();
